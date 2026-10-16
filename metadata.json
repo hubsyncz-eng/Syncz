@@ -1,0 +1,6 @@
+{
+  "name": "Syncz - Central de Agendamentos & Parcerias",
+  "description": "Plataforma centralizadora para abertura de agendas da semana pela agência e marcação em tempo real com confirmação automática para parceiros negociais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
