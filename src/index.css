@@ -863,4 +863,19 @@ html.light-mode .syncz-outcome-icon-nao-compareceu * {
   color: #c2410c !important;
 }
 
+/* 18. Disabled Slot Cards for Past Days & Current Day in Partner View */
+html.light-mode .syncz-slot-card.syncz-slot-disabled {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+html.light-mode .syncz-slot-disabled-btn,
+html.light-mode .syncz-slot-disabled-btn * {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #94a3b8 !important;
+}
+
+
 

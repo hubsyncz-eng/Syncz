@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TimeSlot, Booking, PropertyType } from '../types/index.ts';
 import { useRealtime } from '../context/RealtimeContext.tsx';
-import { formatFullPortugueseDate } from '../utils/dateUtils.ts';
+import { formatFullPortugueseDate, formatDateToISO } from '../utils/dateUtils.ts';
 import confetti from 'canvas-confetti';
 import {
   Calendar,
@@ -133,6 +133,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const todayIso = formatDateToISO(new Date());
+    if (!existingBooking && !isAgencyActor && slot.date <= todayIso) {
+      setErrorMsg('Agendamentos para parceiros só são permitidos a partir do próximo dia.');
+      return;
+    }
     if (!existingBooking && !isSlotStillAvailable) {
       setErrorMsg('Este horário acabou de ser reservado por outro parceiro ou bloqueado pela agência.');
       return;

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TimeSlot, Booking, BookingOutcome } from '../types/index.ts';
 import { useRealtime } from '../context/RealtimeContext.tsx';
-import { formatPortugueseDate } from '../utils/dateUtils.ts';
+import { formatPortugueseDate, formatDateToISO } from '../utils/dateUtils.ts';
 import {
   Clock,
   CalendarPlus,
@@ -118,6 +118,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const isBooked = slot.status === 'booked';
   const isLocked = slot.status === 'locked';
 
+  const todayIso = formatDateToISO(new Date());
+  const isPartnerInclusionBlocked =
+    activeRole === 'partner' && !isBooked && slot.date <= todayIso;
+
   // Check if booked by currently active partner
   const isBookedByCurrentPartner =
     isBooked && booking && booking.partnerId === activePartnerId;
@@ -130,8 +134,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   const handleCardClick = () => {
     if (isOutcomeMenuOpen) return;
-    if (!isBooked && onBookSlot) {
-      onBookSlot(slot);
+    if (!isBooked) {
+      if (isPartnerInclusionBlocked) return;
+      if (onBookSlot) onBookSlot(slot);
     } else if (isBooked && booking && onBookSlot) {
       if (activeRole === 'agency' || isBookedByCurrentPartner) {
         onBookSlot(slot, booking);
@@ -152,12 +157,16 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         isBooked && booking
           ? 'Clique no card para editar este agendamento'
           : !isBooked
-            ? 'Clique para agendar este horário'
+            ? isPartnerInclusionBlocked
+              ? 'Agendamentos para parceiros só são permitidos a partir do próximo dia'
+              : 'Clique para agendar este horário'
             : undefined
       }
       className={`syncz-slot-card rounded-2xl p-3.5 transition-all duration-200 border relative group ${
         !isBooked
-          ? 'syncz-slot-available bg-slate-900/90 border-cyan-500/40 hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer'
+          ? isPartnerInclusionBlocked
+            ? 'syncz-slot-disabled bg-slate-900/50 border-slate-800/80 opacity-60 cursor-not-allowed'
+            : 'syncz-slot-available bg-slate-900/90 border-cyan-500/40 hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer'
           : currentOutcomeConfig
             ? currentOutcomeConfig.cardClass
             : 'syncz-slot-booked-partner bg-indigo-950/50 border-indigo-500/50 shadow-md shadow-indigo-500/10 ring-1 ring-indigo-500/30 hover:border-cyan-400 cursor-pointer'
@@ -181,12 +190,22 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
+              disabled={isPartnerInclusionBlocked}
               onClick={(e) => {
                 e.stopPropagation();
+                if (isPartnerInclusionBlocked) return;
                 if (onBookSlot) onBookSlot(slot);
               }}
-              className="syncz-slot-action-btn syncz-slot-book-btn p-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-gradient-to-r hover:from-cyan-500 hover:via-blue-500 hover:to-indigo-500 hover:text-white group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:via-blue-500 group-hover:to-indigo-500 group-hover:text-white transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer"
-              title="Clique para fazer o cadastro deste horário"
+              className={
+                isPartnerInclusionBlocked
+                  ? 'syncz-slot-disabled-btn p-1.5 rounded-xl bg-slate-800/70 text-slate-500 border border-slate-700/70 flex items-center justify-center shrink-0 cursor-not-allowed opacity-60'
+                  : 'syncz-slot-action-btn syncz-slot-book-btn p-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-gradient-to-r hover:from-cyan-500 hover:via-blue-500 hover:to-indigo-500 hover:text-white group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:via-blue-500 group-hover:to-indigo-500 group-hover:text-white transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer'
+              }
+              title={
+                isPartnerInclusionBlocked
+                  ? 'Inclusão não permitida para o dia atual ou dias passados (somente a partir do próximo dia)'
+                  : 'Clique para fazer o cadastro deste horário'
+              }
             >
               <CalendarPlus className="w-4 h-4" />
             </button>

@@ -157,10 +157,14 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     return weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
   }, [weekVisibleSlots, effectiveDayFilter]);
 
-  // Available slots count
+  const todayIso = formatDateToISO(new Date());
+
+  // Available slots count (only starting from the next day for partners)
   const availableThisWeekCount = useMemo(() => {
-    return slots.filter((s) => weekDateSet.has(s.date) && s.status === 'available').length;
-  }, [slots, weekDateSet]);
+    return slots.filter(
+      (s) => weekDateSet.has(s.date) && s.status === 'available' && s.date > todayIso
+    ).length;
+  }, [slots, weekDateSet, todayIso]);
 
   // Partner's own bookings ordered by date and time
   const myBookings = useMemo(() => {
@@ -217,6 +221,14 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     if (!cancellingBookingId) return;
     await cancelBooking(cancellingBookingId, 'Cancelado pelo parceiro negocial');
     setCancellingBookingId(null);
+  };
+
+  const handlePartnerBookSlot = (slot: TimeSlot, booking?: Booking) => {
+    // Only allow new booking inclusions starting from the next day (block past days and today)
+    if (!booking && slot.date <= todayIso) {
+      return;
+    }
+    onBookSlot(slot, booking);
   };
 
   const handleOpenBookingEdit = (b: Booking) => {
@@ -423,7 +435,10 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                 const daySlots = slotsByDate.get(wd.dateStr) || [];
                 if (daySlots.length === 0) return null;
 
-                const availableInDay = daySlots.filter((s) => s.status === 'available').length;
+                const isDayBookable = wd.dateStr > todayIso;
+                const availableInDay = isDayBookable
+                  ? daySlots.filter((s) => s.status === 'available').length
+                  : 0;
 
                 return (
                   <div
@@ -435,9 +450,15 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                       <div className="font-bold text-base text-white">
                         {wd.label}, {formatNumericDate(wd.dateStr)}
                       </div>
-                      <span className="syncz-badge-available shrink-0 inline-flex items-center justify-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                        {availableInDay} livre{availableInDay === 1 ? '' : 's'}
-                      </span>
+                      {isDayBookable ? (
+                        <span className="syncz-badge-available shrink-0 inline-flex items-center justify-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          {availableInDay} livre{availableInDay === 1 ? '' : 's'}
+                        </span>
+                      ) : (
+                        <span className="syncz-slot-locked-badge shrink-0 inline-flex items-center justify-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                          Inclusão encerrada
+                        </span>
+                      )}
                     </div>
 
                     {/* Day Slots */}
@@ -452,7 +473,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                             key={slot.id}
                             slot={slot}
                             booking={booking}
-                            onBookSlot={onBookSlot}
+                            onBookSlot={handlePartnerBookSlot}
                             isPartnerView
                           />
                         );
@@ -512,7 +533,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                     key={b.id}
                     slot={slot}
                     booking={b}
-                    onBookSlot={onBookSlot}
+                    onBookSlot={handlePartnerBookSlot}
                     isPartnerView
                   />
                 );
