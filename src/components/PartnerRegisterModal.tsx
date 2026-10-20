@@ -232,15 +232,6 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
             )}
 
             <button
-              type="button"
-              disabled={isSubmitting || isDeleting}
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium cursor-pointer"
-            >
-              Cancelar
-            </button>
-
-            <button
               type="submit"
               disabled={isSubmitting || isDeleting}
               className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"

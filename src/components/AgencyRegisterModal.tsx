@@ -26,7 +26,6 @@ export const AgencyRegisterModal: React.FC<AgencyRegisterModalProps> = ({
   const allowDelete = propCanDelete !== undefined ? propCanDelete : currentUser?.role === 'admin';
 
   const [name, setName] = useState(agencyToEdit?.name || '');
-  const [cnpj, setCnpj] = useState(agencyToEdit?.cnpj || '');
   const [address, setAddress] = useState(agencyToEdit?.address || '');
   const [state, setState] = useState(agencyToEdit?.state || 'SP');
   const [citiesList, setCitiesList] = useState<string[]>(
@@ -86,7 +85,6 @@ export const AgencyRegisterModal: React.FC<AgencyRegisterModalProps> = ({
       if (isEditing && agencyToEdit) {
         await updateAgency(agencyToEdit.id, {
           name: name.trim(),
-          cnpj: cnpj.trim(),
           address: address.trim(),
           email: email.trim(),
           phone: phone.trim(),
@@ -99,7 +97,6 @@ export const AgencyRegisterModal: React.FC<AgencyRegisterModalProps> = ({
       } else {
         const created = await registerAgency({
           name: name.trim(),
-          cnpj: cnpj.trim(),
           address: address.trim(),
           email: email.trim(),
           phone: phone.trim(),
@@ -172,34 +169,19 @@ export const AgencyRegisterModal: React.FC<AgencyRegisterModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs sm:text-sm">
-          {/* Nome da Agência & CNPJ */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Nome da Agência *
-              </label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Agência Central Beta"
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                CNPJ da Agência
-              </label>
-              <input
-                type="text"
-                value={cnpj}
-                onChange={(e) => setCnpj(e.target.value)}
-                placeholder="Ex: 00.000.000/0001-00"
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm font-mono"
-              />
-            </div>
+          {/* Nome da Agência */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Nome da Agência *
+            </label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Agência Central Beta"
+              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm"
+            />
           </div>
 
           {/* Endereço */}
@@ -344,15 +326,6 @@ export const AgencyRegisterModal: React.FC<AgencyRegisterModalProps> = ({
                 )}
               </button>
             )}
-
-            <button
-              type="button"
-              disabled={isSubmitting || isDeleting}
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium cursor-pointer"
-            >
-              Cancelar
-            </button>
 
             <button
               type="submit"

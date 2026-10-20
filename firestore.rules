@@ -11,27 +11,33 @@ service cloud.firestore {
     }
 
     match /agencies/{agencyId} {
-      allow read, write: if isValidId(agencyId);
+      allow list: if true;
+      allow get, create, update, delete: if isValidId(agencyId);
     }
 
     match /partners/{partnerId} {
-      allow read, write: if isValidId(partnerId);
+      allow list: if true;
+      allow get, create, update, delete: if isValidId(partnerId);
     }
 
     match /consultants/{consultantId} {
-      allow read, write: if isValidId(consultantId);
+      allow list: if true;
+      allow get, create, update, delete: if isValidId(consultantId);
     }
 
     match /slots/{slotId} {
-      allow read, write: if isValidId(slotId);
+      allow list: if true;
+      allow get, create, update, delete: if isValidId(slotId);
     }
 
     match /bookings/{bookingId} {
-      allow read, write: if isValidId(bookingId);
+      allow list: if true;
+      allow get, create, update, delete: if isValidId(bookingId);
     }
 
     match /activities/{activityId} {
-      allow read, write: if isValidId(activityId);
+      allow list: if true;
+      allow get, create, update, delete: if isValidId(activityId);
     }
 
     match /test/{docId} {

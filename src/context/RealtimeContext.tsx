@@ -21,7 +21,6 @@ import {
   testConnection,
 } from '../lib/firebase.ts';
 import {
-  buildInitialSeedData,
   DEFAULT_AGENCY_INFO,
   formatSeedDate,
 } from '../utils/seedData.ts';
@@ -176,11 +175,14 @@ function authenticateLocally(
     };
   }
 
-  // 2. Agência: Login com E-mail, CNPJ, Nome, ID ou Username
+  // 2. Agência: Login com E-mail, CNPJ, Nome, Responsável, ID ou Username
   const agency = agencies.find(
     (a) =>
       (a.email && a.email.toLowerCase() === lowerUser) ||
       (a.name && a.name.toLowerCase() === lowerUser) ||
+      (a.name && `agência ${a.name.toLowerCase()}` === lowerUser) ||
+      (a.name && `agencia ${a.name.toLowerCase()}` === lowerUser) ||
+      (a.managerName && a.managerName.toLowerCase() === lowerUser) ||
       (a.cnpj && a.cnpj === cleanUser) ||
       (a.id && a.id.toLowerCase() === lowerUser) ||
       (a.username && a.username.toLowerCase() === lowerUser)
@@ -263,8 +265,6 @@ function authenticateLocally(
 }
 
 export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const initialSeed = useRef(buildInitialSeedData());
-
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_THEME);
@@ -296,12 +296,12 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
 
-  const [agencies, setAgencies] = useState<Agency[]>(initialSeed.current.agencies);
-  const [slots, setSlots] = useState<TimeSlot[]>(initialSeed.current.slots);
-  const [bookings, setBookings] = useState<Booking[]>(initialSeed.current.bookings);
-  const [consultants, setConsultants] = useState<Consultant[]>(initialSeed.current.consultants);
-  const [partners, setPartners] = useState<PartnerProfile[]>(initialSeed.current.partners);
-  const [activities, setActivities] = useState<ActivityEvent[]>(initialSeed.current.activities);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [consultants, setConsultants] = useState<Consultant[]>([]);
+  const [partners, setPartners] = useState<PartnerProfile[]>([]);
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [agencyInfo, setAgencyInfo] =
     useState<AppStatePayload['agencyInfo']>(DEFAULT_AGENCY_INFO);
 
@@ -311,14 +311,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
   // Active selected agency
-  const [currentAgency, setCurrentAgency] = useState<Agency | null>(
-    initialSeed.current.agencies[0] || null
-  );
+  const [currentAgency, setCurrentAgency] = useState<Agency | null>(null);
 
   // Active selected partner
-  const [currentPartner, setCurrentPartner] = useState<PartnerProfile | null>(
-    initialSeed.current.partners[0] || null
-  );
+  const [currentPartner, setCurrentPartner] = useState<PartnerProfile | null>(null);
 
   // Active role selected in login screen
   const [selectedLoginRole, setSelectedLoginRole] = useState<'admin' | 'agency' | 'partner'>('admin');
@@ -482,14 +478,39 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     password: string,
     role?: 'admin' | 'agency' | 'partner'
   ): Promise<UserSession> => {
-    const apiRes = await safeFetchJson('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, username, password }),
-    });
+    // 1. Always fetch latest definitive entities from Firestore if available
+    let latestAgencies = agencies;
+    let latestConsultants = consultants;
+    let latestPartners = partners;
 
-    if (apiRes.isApiAvailable && apiRes.ok && apiRes.data?.success && apiRes.data?.session) {
-      const session: UserSession = apiRes.data.session;
+    if (db) {
+      try {
+        const [agSnap, csSnap, ptSnap] = await Promise.all([
+          getDocs(collection(db, 'agencies')),
+          getDocs(collection(db, 'consultants')),
+          getDocs(collection(db, 'partners')),
+        ]);
+        latestAgencies = agSnap.docs.map((d) => d.data() as Agency);
+        latestConsultants = csSnap.docs.map((d) => d.data() as Consultant);
+        latestPartners = ptSnap.docs.map((d) => d.data() as PartnerProfile);
+        setAgencies(latestAgencies);
+        setConsultants(latestConsultants);
+        setPartners(latestPartners);
+      } catch {
+        // Fallback to in-memory state if Firestore query fails
+      }
+    }
+
+    // 2. Authenticate against definitive Firestore data first
+    try {
+      const session = authenticateLocally(
+        username,
+        password,
+        role,
+        latestAgencies,
+        latestConsultants,
+        latestPartners
+      );
       login(session);
       addToast({
         type: 'success',
@@ -497,24 +518,27 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         message: `Bem-vindo(a) ao Syncz, ${session.name}!`,
       });
       return session;
-    }
+    } catch (localAuthErr: any) {
+      // 3. Also check backend API if running with Express server
+      const apiRes = await safeFetchJson('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, username, password }),
+      });
 
-    // Fallback or Firestore-synced local authentication (prevents JSON.parse errors on static deployments and checks latest Firestore entities)
-    const session = authenticateLocally(
-      username,
-      password,
-      role,
-      agencies,
-      consultants,
-      partners
-    );
-    login(session);
-    addToast({
-      type: 'success',
-      title: 'Acesso Autorizado',
-      message: `Bem-vindo(a) ao Syncz, ${session.name}!`,
-    });
-    return session;
+      if (apiRes.isApiAvailable && apiRes.ok && apiRes.data?.success && apiRes.data?.session) {
+        const session: UserSession = apiRes.data.session;
+        login(session);
+        addToast({
+          type: 'success',
+          title: 'Acesso Autorizado',
+          message: `Bem-vindo(a) ao Syncz, ${session.name}!`,
+        });
+        return session;
+      }
+
+      throw localAuthErr;
+    }
   };
 
   // Fetch state via REST API (if running with Express backend)
@@ -522,19 +546,17 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const apiRes = await safeFetchJson('/api/state');
     if (apiRes.isApiAvailable && apiRes.ok && apiRes.data) {
       const data: AppStatePayload = apiRes.data;
-      if (Array.isArray(data.agencies) && data.agencies.length > 0) setAgencies(data.agencies);
-      if (Array.isArray(data.slots) && data.slots.length > 0) setSlots(data.slots);
+      if (Array.isArray(data.agencies)) setAgencies(data.agencies);
+      if (Array.isArray(data.slots)) setSlots(data.slots);
       if (Array.isArray(data.bookings)) setBookings(data.bookings);
-      if (Array.isArray(data.consultants) && data.consultants.length > 0)
-        setConsultants(data.consultants);
-      if (Array.isArray(data.partners) && data.partners.length > 0) setPartners(data.partners);
-      if (Array.isArray(data.activities) && data.activities.length > 0)
-        setActivities(data.activities);
+      if (Array.isArray(data.consultants)) setConsultants(data.consultants);
+      if (Array.isArray(data.partners)) setPartners(data.partners);
+      if (Array.isArray(data.activities)) setActivities(data.activities);
       if (data.agencyInfo) setAgencyInfo(data.agencyInfo);
     }
   }, []);
 
-  // Direct Firestore real-time synchronization + non-destructive initial seed
+  // Direct Firestore real-time synchronization with the definitive database
   useEffect(() => {
     if (!db) return;
 
@@ -554,85 +576,46 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         if (isCancelled) return;
 
-        const seed = initialSeed.current;
+        setAgencies(agSnap.docs.map((d) => d.data() as Agency));
+        setPartners(ptSnap.docs.map((d) => d.data() as PartnerProfile));
+        setConsultants(csSnap.docs.map((d) => d.data() as Consultant));
+        setSlots(slSnap.docs.map((d) => d.data() as TimeSlot));
+        setBookings(bkSnap.docs.map((d) => d.data() as Booking));
 
-        // Only seed collections that are completely empty in Firestore — NEVER overwrite existing documents
-        if (agSnap.empty) {
-          seed.agencies.forEach((a) => persistToFirestore('agencies', a.id, a));
-        } else {
-          setAgencies(agSnap.docs.map((d) => d.data() as Agency));
-        }
-
-        if (ptSnap.empty) {
-          seed.partners.forEach((p) => persistToFirestore('partners', p.id, p));
-        } else {
-          setPartners(ptSnap.docs.map((d) => d.data() as PartnerProfile));
-        }
-
-        if (csSnap.empty) {
-          seed.consultants.forEach((c) => persistToFirestore('consultants', c.id, c));
-        } else {
-          setConsultants(csSnap.docs.map((d) => d.data() as Consultant));
-        }
-
-        if (slSnap.empty) {
-          seed.slots.forEach((s) => persistToFirestore('slots', s.id, s));
-        } else {
-          setSlots(slSnap.docs.map((d) => d.data() as TimeSlot));
-        }
-
-        if (bkSnap.empty) {
-          seed.bookings.forEach((b) => persistToFirestore('bookings', b.id, b));
-        } else {
-          setBookings(bkSnap.docs.map((d) => d.data() as Booking));
-        }
-
-        if (actSnap.empty) {
-          seed.activities.forEach((act) => persistToFirestore('activities', act.id, act));
-        } else {
-          const loadedActs = actSnap.docs
-            .map((d) => d.data() as ActivityEvent)
-            .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-          setActivities(loadedActs);
-        }
+        const loadedActs = actSnap.docs
+          .map((d) => d.data() as ActivityEvent)
+          .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+        setActivities(loadedActs);
 
         setIsConnected(true);
 
-        // Subscribe to real-time updates on all collections
+        // Subscribe to real-time updates on all collections in the definitive database
         unsubscribers = [
           onSnapshot(
             collection(db, 'agencies'),
             (snap) => {
-              if (!snap.empty) {
-                setAgencies(snap.docs.map((d) => d.data() as Agency));
-              }
+              setAgencies(snap.docs.map((d) => d.data() as Agency));
             },
             () => {}
           ),
           onSnapshot(
             collection(db, 'partners'),
             (snap) => {
-              if (!snap.empty) {
-                setPartners(snap.docs.map((d) => d.data() as PartnerProfile));
-              }
+              setPartners(snap.docs.map((d) => d.data() as PartnerProfile));
             },
             () => {}
           ),
           onSnapshot(
             collection(db, 'consultants'),
             (snap) => {
-              if (!snap.empty) {
-                setConsultants(snap.docs.map((d) => d.data() as Consultant));
-              }
+              setConsultants(snap.docs.map((d) => d.data() as Consultant));
             },
             () => {}
           ),
           onSnapshot(
             collection(db, 'slots'),
             (snap) => {
-              if (!snap.empty) {
-                setSlots(snap.docs.map((d) => d.data() as TimeSlot));
-              }
+              setSlots(snap.docs.map((d) => d.data() as TimeSlot));
             },
             () => {}
           ),
@@ -646,12 +629,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           onSnapshot(
             collection(db, 'activities'),
             (snap) => {
-              if (!snap.empty) {
-                const sorted = snap.docs
-                  .map((d) => d.data() as ActivityEvent)
-                  .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-                setActivities(sorted);
-              }
+              const sorted = snap.docs
+                .map((d) => d.data() as ActivityEvent)
+                .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+              setActivities(sorted);
             },
             () => {}
           ),
@@ -697,16 +678,12 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             switch (msg.type) {
               case 'INIT_STATE': {
                 const data: AppStatePayload = msg.payload;
-                if (Array.isArray(data.agencies) && data.agencies.length > 0)
-                  setAgencies(data.agencies);
-                if (Array.isArray(data.slots) && data.slots.length > 0) setSlots(data.slots);
+                if (Array.isArray(data.agencies)) setAgencies(data.agencies);
+                if (Array.isArray(data.slots)) setSlots(data.slots);
                 if (Array.isArray(data.bookings)) setBookings(data.bookings);
-                if (Array.isArray(data.consultants) && data.consultants.length > 0)
-                  setConsultants(data.consultants);
-                if (Array.isArray(data.partners) && data.partners.length > 0)
-                  setPartners(data.partners);
-                if (Array.isArray(data.activities) && data.activities.length > 0)
-                  setActivities(data.activities);
+                if (Array.isArray(data.consultants)) setConsultants(data.consultants);
+                if (Array.isArray(data.partners)) setPartners(data.partners);
+                if (Array.isArray(data.activities)) setActivities(data.activities);
                 if (data.agencyInfo) setAgencyInfo(data.agencyInfo);
                 break;
               }
@@ -1569,7 +1546,13 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } = params;
 
     const targetAgencyId = agencyId || agencies[0]?.id || 'ag_1';
-    const consultant = consultants.find((c) => c.id === consultantId) || consultants[0];
+    const targetAgency = agencies.find((a) => a.id === targetAgencyId) || agencies[0];
+    const consultant = consultants.find((c) => c.id === consultantId) ||
+      consultants[0] || {
+        id: consultantId || 'equipe_central',
+        name: targetAgency?.managerName || targetAgency?.name || 'Equipe da Agência',
+        role: 'Atendimento & Negócios',
+      };
     const startD = new Date(startDate + 'T00:00:00');
     const endD = new Date(endDate + 'T23:59:59');
     const newSlots: TimeSlot[] = [];
@@ -1661,11 +1644,18 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (apiRes.isApiAvailable && apiRes.ok && apiRes.data) {
       createdSlot = apiRes.data;
     } else {
+      const targetAgencyId = slotData.agencyId || agencies[0]?.id || 'ag_1';
+      const targetAgency = agencies.find((a) => a.id === targetAgencyId) || agencies[0];
       const consultant =
-        consultants.find((c) => c.id === slotData.consultantId) || consultants[0];
+        consultants.find((c) => c.id === slotData.consultantId) ||
+        consultants[0] || {
+          id: slotData.consultantId || 'equipe_central',
+          name: targetAgency?.managerName || targetAgency?.name || 'Equipe da Agência',
+          role: 'Atendimento & Negócios',
+        };
       createdSlot = {
         id: `slot_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        agencyId: slotData.agencyId || agencies[0]?.id || 'ag_1',
+        agencyId: targetAgencyId,
         date: slotData.date || formatSeedDate(new Date()),
         startTime: slotData.startTime || '09:00',
         endTime: slotData.endTime || '10:00',

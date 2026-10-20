@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useRealtime } from '../context/RealtimeContext.tsx';
-import { Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const LoginPortal: React.FC = () => {
   const { loginWithCredentials } = useRealtime();
 
-  const [username, setUsername] = useState('Syncz');
-  const [password, setPassword] = useState('@dmin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -32,12 +32,6 @@ export const LoginPortal: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickFill = (userVal: string, passVal: string) => {
-    setUsername(userVal);
-    setPassword(passVal);
-    setErrorMessage(null);
   };
 
   return (
@@ -168,58 +162,6 @@ export const LoginPortal: React.FC = () => {
               </button>
             </div>
           </form>
-
-          {/* Quick Access Badges for Easy Testing */}
-          <div className="mt-6 pt-5 border-t border-slate-800/80">
-            <div className="text-[11px] font-medium text-slate-400 mb-2.5 flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-cyan-400" />
-              <span>Acessos rápidos para teste:</span>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-1.5 text-[11px]">
-              {/* Administrador */}
-              <button
-                type="button"
-                onClick={() => handleQuickFill('Syncz', '@dmin')}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 hover:bg-slate-800 border border-slate-800/70 hover:border-purple-500/40 text-slate-300 hover:text-white transition-all cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-purple-400" />
-                  <span className="font-semibold text-purple-300">Administrador:</span>
-                  <span className="text-slate-400">Syncz</span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono">Senha: @dmin</span>
-              </button>
-
-              {/* Agência */}
-              <button
-                type="button"
-                onClick={() => handleQuickFill('contato@agenciacentralalfa.com.br', 'agencia123')}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 hover:bg-slate-800 border border-slate-800/70 hover:border-blue-500/40 text-slate-300 hover:text-white transition-all cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  <span className="font-semibold text-blue-300">Agência:</span>
-                  <span className="text-slate-400 truncate max-w-[150px]">contato@agencia...</span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono">Senha: agencia123</span>
-              </button>
-
-              {/* Parceiro */}
-              <button
-                type="button"
-                onClick={() => handleQuickFill('eduardo@logiprime.com.br', 'parceiro123')}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 hover:bg-slate-800 border border-slate-800/70 hover:border-emerald-500/40 text-slate-300 hover:text-white transition-all cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="font-semibold text-emerald-300">Parceiro:</span>
-                  <span className="text-slate-400 truncate max-w-[150px]">eduardo@logiprime...</span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono">Senha: parceiro123</span>
-              </button>
-            </div>
-          </div>
 
         </div>
 
