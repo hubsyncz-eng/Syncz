@@ -12,6 +12,7 @@ import {
   UserRole,
   PropertyType,
 } from '../types/index.ts';
+import { testConnection } from '../lib/firebase.ts';
 
 interface ToastAlert {
   id: string;
@@ -41,12 +42,30 @@ interface RealtimeContextValue {
   setSelectedLoginRole: (role: 'admin' | 'agency' | 'partner') => void;
   adminPerspective: 'admin_master' | 'agency_view' | 'partner_view';
   setAdminPerspective: (perspective: 'admin_master' | 'agency_view' | 'partner_view') => void;
+  agencyActiveView: 'schedule' | 'partners' | 'users';
+  setAgencyActiveView: (view: 'schedule' | 'partners' | 'users') => void;
   loginWithCredentials: (username: string, password: string, role?: 'admin' | 'agency' | 'partner') => Promise<UserSession>;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
   toasts: ToastAlert[];
   removeToast: (id: string) => void;
+  // Modal handlers for Agency & Partner registration/editing
+  editingAgencyModal: { isOpen: boolean; agency?: Agency | null };
+  openAgencyModal: (agency?: Agency | null) => void;
+  closeAgencyModal: () => void;
+  editingPartnerModal: { isOpen: boolean; partner?: PartnerProfile | null };
+  openPartnerModal: (partner?: PartnerProfile | null) => void;
+  closePartnerModal: () => void;
   // Actions
   registerAgency: (data: Partial<Agency>) => Promise<Agency>;
+  updateAgency: (id: string, data: Partial<Agency>) => Promise<Agency>;
+  deleteAgency: (id: string) => Promise<boolean>;
   registerPartner: (data: Partial<PartnerProfile>) => Promise<PartnerProfile>;
+  updatePartner: (id: string, data: Partial<PartnerProfile>) => Promise<PartnerProfile>;
+  deletePartner: (id: string) => Promise<boolean>;
+  registerConsultant: (data: Partial<Consultant>) => Promise<Consultant>;
+  updateConsultant: (id: string, data: Partial<Consultant>) => Promise<Consultant>;
+  deleteConsultant: (id: string) => Promise<boolean>;
   bookSlot: (bookingData: {
     slotId: string;
     partnerId: string;
@@ -81,8 +100,40 @@ interface RealtimeContextValue {
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 
 const STORAGE_KEY_SESSION = 'syncz_current_user';
+const STORAGE_KEY_THEME = 'syncz_theme';
 
 export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_THEME);
+      if (saved === 'dark' || saved === 'light') return saved;
+    } catch {
+      // ignore storage errors
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light-mode');
+      root.classList.remove('dark-mode');
+    } else {
+      root.classList.add('dark-mode');
+      root.classList.remove('light-mode');
+    }
+    root.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem(STORAGE_KEY_THEME, theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
+
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -113,9 +164,39 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Perspective for administrator ('admin_master' | 'agency_view' | 'partner_view')
   const [adminPerspective, setAdminPerspective] = useState<'admin_master' | 'agency_view' | 'partner_view'>('admin_master');
 
+  // Active sub-view inside Agency perspective ('schedule' | 'partners' | 'users')
+  const [agencyActiveView, setAgencyActiveView] = useState<'schedule' | 'partners' | 'users'>('schedule');
+
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<any>(null);
+
+  // Modal states for Agency and Partner Registration/Editing
+  const [editingAgencyModal, setEditingAgencyModal] = useState<{
+    isOpen: boolean;
+    agency?: Agency | null;
+  }>({ isOpen: false, agency: null });
+
+  const [editingPartnerModal, setEditingPartnerModal] = useState<{
+    isOpen: boolean;
+    partner?: PartnerProfile | null;
+  }>({ isOpen: false, partner: null });
+
+  const openAgencyModal = useCallback((agency?: Agency | null) => {
+    setEditingAgencyModal({ isOpen: true, agency: agency || null });
+  }, []);
+
+  const closeAgencyModal = useCallback(() => {
+    setEditingAgencyModal({ isOpen: false, agency: null });
+  }, []);
+
+  const openPartnerModal = useCallback((partner?: PartnerProfile | null) => {
+    setEditingPartnerModal({ isOpen: true, partner: partner || null });
+  }, []);
+
+  const closePartnerModal = useCallback(() => {
+    setEditingPartnerModal({ isOpen: false, partner: null });
+  }, []);
 
   const addToast = useCallback((toast: Omit<ToastAlert, 'id' | 'timestamp'>) => {
     const id = `toast_${Date.now()}_${Math.random()}`;
@@ -133,6 +214,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const login = (session: UserSession) => {
     setCurrentUser(session);
+    setAgencyActiveView('schedule');
     try {
       localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
     } catch {}
@@ -141,6 +223,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const logout = () => {
     setCurrentUser(null);
     setAdminPerspective('admin_master');
+    setAgencyActiveView('schedule');
     try {
       localStorage.removeItem(STORAGE_KEY_SESSION);
     } catch {}
@@ -196,8 +279,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [currentAgency, currentPartner]);
 
-  // Connect WebSocket
+  // Connect WebSocket & verify Firestore connection
   useEffect(() => {
+    testConnection();
     fetchState();
 
     let isUnmounted = false;
@@ -231,11 +315,36 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               }
               case 'AGENCY_REGISTERED': {
                 setAgencies(msg.payload.agencies);
+                if (msg.payload.agency) {
+                  const updatedAg = msg.payload.agency;
+                  setCurrentAgency((prev) => (prev && prev.id === updatedAg.id ? { ...prev, ...updatedAg } : prev));
+                  setCurrentUser((prevUser) => {
+                    if (!prevUser) return null;
+                    if (
+                      prevUser.role === 'agency' &&
+                      (prevUser.id === updatedAg.id || prevUser.agencyId === updatedAg.id)
+                    ) {
+                      const updated = {
+                        ...prevUser,
+                        name: updatedAg.name,
+                        email: updatedAg.email,
+                        representative: updatedAg.managerName || prevUser.representative,
+                        cnpj: updatedAg.cnpj || prevUser.cnpj,
+                        badgeColor: updatedAg.badgeColor || prevUser.badgeColor,
+                      };
+                      try {
+                        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(updated));
+                      } catch {}
+                      return updated;
+                    }
+                    return prevUser;
+                  });
+                }
                 if (msg.payload.activity) {
                   setActivities((prev) => [msg.payload.activity, ...prev]);
                   addToast({
                     type: 'success',
-                    title: 'Agência Cadastrada',
+                    title: msg.payload.activity.title || 'Agência Cadastrada',
                     message: msg.payload.activity.description,
                   });
                 }
@@ -243,6 +352,41 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               }
               case 'PARTNER_REGISTERED': {
                 setPartners(msg.payload.partners);
+                if (msg.payload.bookings) {
+                  setBookings(msg.payload.bookings);
+                }
+                if (msg.payload.partner) {
+                  const updatedP = msg.payload.partner;
+                  setCurrentPartner((prev) => (prev && prev.id === updatedP.id ? { ...prev, ...updatedP } : prev));
+                  setCurrentUser((prevUser) => {
+                    if (!prevUser) return null;
+                    if (
+                      prevUser.role === 'partner' &&
+                      (prevUser.id === updatedP.id || prevUser.partnerId === updatedP.id)
+                    ) {
+                      const updated = {
+                        ...prevUser,
+                        name: updatedP.name,
+                        email: updatedP.email,
+                        representative: updatedP.representative || prevUser.representative,
+                        cnpj: updatedP.cnpj || prevUser.cnpj,
+                        badgeColor: updatedP.badgeColor || prevUser.badgeColor,
+                      };
+                      try {
+                        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(updated));
+                      } catch {}
+                      return updated;
+                    }
+                    return prevUser;
+                  });
+                }
+                if (msg.payload.activity) {
+                  setActivities((prev) => [msg.payload.activity, ...prev]);
+                }
+                break;
+              }
+              case 'CONSULTANTS_UPDATED': {
+                setConsultants(msg.payload.consultants);
                 break;
               }
               case 'SLOT_BOOKED': {
@@ -360,6 +504,63 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return result;
   };
 
+  const updateAgency = async (id: string, data: Partial<Agency>): Promise<Agency> => {
+    const res = await fetch(`/api/agencies/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao atualizar agência');
+    setAgencies((prev) => prev.map((a) => (a.id === id ? result : a)));
+    setCurrentAgency((prev) => (prev && prev.id === id ? result : prev));
+    setCurrentUser((prevUser) => {
+      if (!prevUser) return null;
+      if (prevUser.role === 'agency' && (prevUser.id === id || prevUser.agencyId === id)) {
+        const updated = {
+          ...prevUser,
+          name: result.name,
+          email: result.email,
+          representative: result.managerName || prevUser.representative,
+          cnpj: result.cnpj || prevUser.cnpj,
+          badgeColor: result.badgeColor || prevUser.badgeColor,
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      }
+      return prevUser;
+    });
+    addToast({
+      type: 'success',
+      title: 'Agência Atualizada!',
+      message: `Os dados da agência ${result.name} foram salvos com sucesso.`,
+    });
+    return result;
+  };
+
+  const deleteAgency = async (id: string): Promise<boolean> => {
+    const res = await fetch(`/api/agencies/${id}`, {
+      method: 'DELETE',
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao excluir agência');
+    setAgencies((prev) => {
+      const filtered = prev.filter((a) => a.id !== id);
+      if (currentAgency && currentAgency.id === id) {
+        setCurrentAgency(filtered.length > 0 ? filtered[0] : null);
+      }
+      return filtered;
+    });
+    addToast({
+      type: 'info',
+      title: 'Agência Excluída',
+      message: 'A agência foi removida do sistema com sucesso.',
+    });
+    return true;
+  };
+
   const registerPartner = async (data: Partial<PartnerProfile>): Promise<PartnerProfile> => {
     const res = await fetch('/api/partners', {
       method: 'POST',
@@ -374,6 +575,126 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       message: `${result.name} pode verificar horários disponíveis e agendar reuniões.`,
     });
     return result;
+  };
+
+  const updatePartner = async (id: string, data: Partial<PartnerProfile>): Promise<PartnerProfile> => {
+    const res = await fetch(`/api/partners/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao atualizar parceiro');
+    setPartners((prev) => prev.map((p) => (p.id === id ? result : p)));
+    setCurrentPartner((prev) => (prev && prev.id === id ? result : prev));
+    setCurrentUser((prevUser) => {
+      if (!prevUser) return null;
+      if (prevUser.role === 'partner' && (prevUser.id === id || prevUser.partnerId === id)) {
+        const updated = {
+          ...prevUser,
+          name: result.name,
+          email: result.email,
+          representative: result.representative || prevUser.representative,
+          cnpj: result.cnpj || prevUser.cnpj,
+          badgeColor: result.badgeColor || prevUser.badgeColor,
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      }
+      return prevUser;
+    });
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.partnerId === id
+          ? {
+              ...b,
+              partnerName: result.name,
+              partnerRepresentative: result.representative,
+              partnerEmail: result.email,
+              partnerPhone: result.phone || b.partnerPhone,
+              partnerCnpj: result.cnpj,
+            }
+          : b
+      )
+    );
+    addToast({
+      type: 'success',
+      title: 'Parceiro Atualizado!',
+      message: `Os dados de ${result.name} foram salvos com sucesso.`,
+    });
+    return result;
+  };
+
+  const deletePartner = async (id: string): Promise<boolean> => {
+    const res = await fetch(`/api/partners/${id}`, {
+      method: 'DELETE',
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao excluir parceiro');
+    setPartners((prev) => {
+      const filtered = prev.filter((p) => p.id !== id);
+      if (currentPartner && currentPartner.id === id) {
+        setCurrentPartner(filtered.length > 0 ? filtered[0] : null);
+      }
+      return filtered;
+    });
+    addToast({
+      type: 'info',
+      title: 'Parceiro Excluído',
+      message: 'O cadastro do parceiro foi removido do sistema.',
+    });
+    return true;
+  };
+
+  const registerConsultant = async (data: Partial<Consultant>): Promise<Consultant> => {
+    const res = await fetch('/api/consultants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao cadastrar usuário');
+    setConsultants((prev) => [...prev.filter((c) => c.id !== result.id), result]);
+    addToast({
+      type: 'success',
+      title: 'Usuário Cadastrado!',
+      message: `${result.name} foi adicionado(a) à equipe da agência.`,
+    });
+    return result;
+  };
+
+  const updateConsultant = async (id: string, data: Partial<Consultant>): Promise<Consultant> => {
+    const res = await fetch(`/api/consultants/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao atualizar usuário');
+    setConsultants((prev) => prev.map((c) => (c.id === id ? result : c)));
+    addToast({
+      type: 'success',
+      title: 'Usuário Atualizado!',
+      message: `Os dados de ${result.name} foram salvos com sucesso.`,
+    });
+    return result;
+  };
+
+  const deleteConsultant = async (id: string): Promise<boolean> => {
+    const res = await fetch(`/api/consultants/${id}`, {
+      method: 'DELETE',
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Erro ao excluir usuário');
+    setConsultants((prev) => prev.filter((c) => c.id !== id));
+    addToast({
+      type: 'info',
+      title: 'Usuário Excluído',
+      message: 'O cadastro do usuário foi removido da agência.',
+    });
+    return true;
   };
 
   const bookSlot = async (bookingData: {
@@ -588,11 +909,28 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSelectedLoginRole,
         adminPerspective,
         setAdminPerspective,
+        agencyActiveView,
+        setAgencyActiveView,
         loginWithCredentials,
+        theme,
+        toggleTheme,
         toasts,
         removeToast,
+        editingAgencyModal,
+        openAgencyModal,
+        closeAgencyModal,
+        editingPartnerModal,
+        openPartnerModal,
+        closePartnerModal,
         registerAgency,
+        updateAgency,
+        deleteAgency,
         registerPartner,
+        updatePartner,
+        deletePartner,
+        registerConsultant,
+        updateConsultant,
+        deleteConsultant,
         bookSlot,
         updateBooking,
         cancelBooking,

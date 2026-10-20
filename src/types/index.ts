@@ -5,9 +5,10 @@ export type UserRole = 'admin' | 'agency' | 'partner';
 
 export interface Agency {
   id: string;
-  name: string; // Nome Fantasia
-  legalName: string; // Razão Social
-  cnpj: string;
+  name: string; // Nome da Agência
+  legalName?: string; // Razão Social
+  cnpj?: string;
+  address?: string;
   email: string;
   phone: string;
   city: string;
@@ -31,6 +32,7 @@ export interface UserSession {
   representative?: string;
   cnpj?: string;
   badgeColor?: string;
+  isAgencyUser?: boolean;
 }
 
 export interface Consultant {
@@ -40,6 +42,7 @@ export interface Consultant {
   role: string;
   department: string;
   email: string;
+  password?: string;
   avatarColor: string;
   specialties: string[];
 }
@@ -113,7 +116,15 @@ export interface PartnerProfile {
 
 export interface ActivityEvent {
   id: string;
-  type: 'slot_created' | 'slot_booked' | 'booking_confirmed' | 'booking_cancelled' | 'slots_batch_opened' | 'partner_active' | 'agency_registered';
+  type:
+    | 'slot_created'
+    | 'slot_booked'
+    | 'booking_confirmed'
+    | 'booking_cancelled'
+    | 'slots_batch_opened'
+    | 'partner_active'
+    | 'partner_registered'
+    | 'agency_registered';
   timestamp: string;
   title: string;
   description: string;

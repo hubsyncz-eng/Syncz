@@ -1,1 +1,774 @@
 @import "tailwindcss";
+
+/* ============================================================================
+   SYNCZ BRAND COLOR SYSTEM (DARK & LIGHT MODES)
+   Identity Palette derived from Syncz Logo:
+   - Cyan (#22d3ee / #0891b2)
+   - Blue (#60a5fa / #2563eb)
+   - Indigo (#818cf8 / #4f46e5)
+   ============================================================================ */
+
+/* Global Syncz Palette Unification (Both Dark & Light Modes):
+   Remap legacy emerald/teal/purple accents to the official Syncz Cyan-Blue-Indigo spectrum */
+.text-emerald-400,
+.text-emerald-300,
+.text-emerald-200 {
+  color: #22d3ee !important;
+}
+
+.text-purple-400,
+.text-purple-300,
+.text-purple-200 {
+  color: #818cf8 !important;
+}
+
+.bg-emerald-600,
+.bg-emerald-500,
+.bg-purple-600,
+.bg-purple-500,
+[class*="from-emerald-600"],
+[class*="from-purple-600"] {
+  background-image: linear-gradient(to right, #06b6d4, #3b82f6, #6366f1) !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.bg-emerald-500\/10,
+.bg-emerald-500\/15,
+.bg-emerald-500\/20,
+.bg-emerald-600\/20 {
+  background-color: rgba(34, 211, 238, 0.14) !important;
+}
+
+.bg-purple-500\/10,
+.bg-purple-500\/15,
+.bg-purple-500\/20,
+.bg-purple-600\/20 {
+  background-color: rgba(129, 140, 248, 0.14) !important;
+}
+
+.border-emerald-500,
+.border-emerald-500\/50,
+.border-emerald-500\/40,
+.border-emerald-500\/30,
+.border-emerald-500\/20 {
+  border-color: rgba(34, 211, 238, 0.35) !important;
+}
+
+.border-purple-500,
+.border-purple-500\/50,
+.border-purple-500\/40,
+.border-purple-500\/30,
+.border-purple-500\/20 {
+  border-color: rgba(129, 140, 248, 0.35) !important;
+}
+
+/* ============================================================================
+   DARK MODE (Syncz Deep Indigo-Slate Atmosphere)
+   ============================================================================ */
+html.dark-mode,
+html.dark-mode body {
+  background-color: #060b19;
+  color: #f8fafc;
+  color-scheme: dark;
+}
+
+html.dark-mode .min-h-screen.bg-slate-950 {
+  background: radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.08), transparent 40%),
+              radial-gradient(circle at 85% 10%, rgba(99, 102, 241, 0.08), transparent 40%),
+              #060b19 !important;
+}
+
+/* ============================================================================
+   LIGHT MODE (Syncz Daylight Cyan-Blue-Indigo Atmosphere)
+   ============================================================================ */
+html.light-mode,
+html.light-mode body {
+  background-color: #f4f7fb;
+  color: #0f172a;
+  color-scheme: light;
+}
+
+/* 1. Root & Main Layout Surfaces */
+html.light-mode .min-h-screen.bg-slate-950 {
+  background: radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.10), transparent 42%),
+              radial-gradient(circle at 85% 10%, rgba(99, 102, 241, 0.10), transparent 42%),
+              #f4f7fb !important;
+  color: #0f172a !important;
+}
+
+html.light-mode header.bg-slate-900\/95 {
+  background: linear-gradient(90deg, #1f304d 0%, #283d5e 50%, #253759 100%) !important;
+  border-bottom-color: #3b537a !important;
+  box-shadow: 0 8px 20px -3px rgba(30, 48, 77, 0.22) !important;
+  color: #ffffff !important;
+}
+
+html.light-mode footer.bg-slate-950\/80 {
+  background-color: #ffffff !important;
+  border-top-color: rgba(59, 130, 246, 0.16) !important;
+}
+
+/* 2. Card, Panel & Modal Surfaces */
+html.light-mode :not(header).bg-slate-900,
+html.light-mode :not(header).bg-slate-900\/95,
+html.light-mode .bg-slate-900\/90,
+html.light-mode .bg-slate-900\/80,
+html.light-mode .bg-slate-900\/70,
+html.light-mode .bg-slate-900\/60,
+html.light-mode .bg-slate-900\/50,
+html.light-mode .bg-slate-900\/40 {
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 16px -2px rgba(37, 99, 235, 0.06), 0 1px 3px 0 rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Modal Backdrops */
+html.light-mode .fixed.inset-0.bg-slate-950\/80,
+html.light-mode .fixed.inset-0.bg-black\/70,
+html.light-mode .fixed.inset-0.bg-black\/75 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* Inner Wells & Sub-containers */
+html.light-mode :not(.min-h-screen):not(.fixed).bg-slate-950,
+html.light-mode :not(.fixed).bg-slate-950\/80,
+html.light-mode :not(.fixed).bg-slate-950\/70,
+html.light-mode :not(.fixed).bg-slate-950\/60,
+html.light-mode :not(.fixed).bg-slate-950\/50,
+html.light-mode :not(.fixed).bg-slate-950\/40 {
+  background-color: #f8fafc !important;
+}
+
+/* Interactive Secondary Buttons & Tags */
+html.light-mode .bg-slate-800,
+html.light-mode .bg-slate-800\/80,
+html.light-mode .bg-slate-800\/60,
+html.light-mode .bg-slate-800\/50,
+html.light-mode .bg-slate-800\/40 {
+  background-color: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e3a8a !important;
+}
+
+html.light-mode .hover\:bg-slate-700:hover,
+html.light-mode .hover\:bg-slate-800:hover,
+html.light-mode .hover\:bg-slate-850:hover {
+  background-color: #bfdbfe !important;
+}
+
+/* ============================================================================
+   SCHEDULE CARDS & CARD BUTTONS IN LIGHT MODE (HIGH-CONTRAST SYNCZ PALETTE)
+   ============================================================================ */
+
+/* Day Column Background in Light Mode matching the Top Filter Card */
+html.light-mode .syncz-day-column {
+  background-color: #ffffff !important;
+  border-color: #bfdbfe !important;
+  box-shadow: 0 4px 16px -2px rgba(37, 99, 235, 0.06), 0 1px 3px 0 rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Schedule Cards (SlotCard & BookingCard) in Light Mode */
+html.light-mode .syncz-slot-card {
+  background-color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.light-mode .syncz-slot-available {
+  border-color: #38bdf8 !important;
+}
+
+html.light-mode .syncz-slot-available:hover {
+  border-color: #0284c7 !important;
+  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.18) !important;
+}
+
+html.light-mode .syncz-slot-booked-partner,
+html.light-mode .syncz-booking-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f7ff 100%) !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.12) !important;
+}
+
+html.light-mode .syncz-slot-booked {
+  background-color: #ffffff !important;
+  border-color: #60a5fa !important;
+}
+
+html.light-mode .syncz-slot-locked {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+/* 1. Top-Right Schedule Card Action Buttons (CalendarPlus & Edit3) */
+html.light-mode .syncz-slot-book-btn {
+  background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%) !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
+}
+
+html.light-mode .syncz-slot-book-btn * {
+  color: #ffffff !important;
+}
+
+html.light-mode .group:hover .syncz-slot-book-btn {
+  background: linear-gradient(135deg, #0891b2 0%, #1d4ed8 50%, #4338ca 100%) !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.38) !important;
+}
+
+html.light-mode .syncz-slot-edit-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+  border-color: #4338ca !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.28) !important;
+}
+
+html.light-mode .syncz-slot-edit-btn * {
+  color: #ffffff !important;
+}
+
+html.light-mode .group:hover .syncz-slot-edit-btn {
+  background: linear-gradient(135deg, #06b6d4 0%, #2563eb 50%, #4f46e5 100%) !important;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.38) !important;
+}
+
+/* 2. Bottom Schedule Card Buttons ("Bloquear", "Agenda .ics", "Desbloquear", "Excluir", "Desmarcar", "Cancelar") */
+html.light-mode .syncz-slot-lock-btn,
+html.light-mode .syncz-card-secondary-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25) !important;
+}
+
+html.light-mode .syncz-slot-lock-btn *,
+html.light-mode .syncz-card-secondary-btn * {
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-slot-lock-btn:hover,
+html.light-mode .syncz-card-secondary-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #4338ca 100%) !important;
+  border-color: #1e40af !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35) !important;
+}
+
+html.light-mode .syncz-slot-unlock-btn {
+  background: linear-gradient(135deg, #d97706 0%, #ea580c 100%) !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.28) !important;
+}
+
+html.light-mode .syncz-slot-unlock-btn * {
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-slot-unlock-btn:hover {
+  background: linear-gradient(135deg, #b45309 0%, #c2410c 100%) !important;
+}
+
+html.light-mode .syncz-slot-delete-btn,
+html.light-mode .syncz-card-danger-btn {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%) !important;
+  border-color: #be123c !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.25) !important;
+}
+
+html.light-mode .syncz-slot-delete-btn *,
+html.light-mode .syncz-card-danger-btn * {
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-slot-delete-btn:hover,
+html.light-mode .syncz-card-danger-btn:hover {
+  background: linear-gradient(135deg, #be123c 0%, #9f1239 100%) !important;
+  box-shadow: 0 4px 10px rgba(225, 29, 72, 0.35) !important;
+}
+
+/* 3. Schedule Card Status Badges & Filter Chips in Light Mode */
+html.light-mode .syncz-slot-confirmed-badge {
+  background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%) !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-slot-locked-badge {
+  background-color: #475569 !important;
+  border-color: #334155 !important;
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-slot-locked-badge * {
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-badge-available {
+  background-color: #0891b2 !important;
+  border-color: #0e7490 !important;
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-badge-available * {
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-badge-booked {
+  background-color: #4f46e5 !important;
+  border-color: #4338ca !important;
+  color: #ffffff !important;
+}
+
+html.light-mode .syncz-filter-chip,
+html.light-mode .syncz-week-tag {
+  background-color: #dbeafe !important;
+  border-color: #60a5fa !important;
+  color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-week-tag button,
+html.light-mode .syncz-week-tag button * {
+  color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-week-tag button:hover {
+  background-color: #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+html.light-mode .syncz-filter-chip:hover {
+  background-color: #bfdbfe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+}
+
+/* 3. Syncz Tinted Status & Metric Surfaces in Light Mode */
+html.light-mode .bg-indigo-950\/50,
+html.light-mode .bg-indigo-950\/40,
+html.light-mode .bg-blue-950\/60,
+html.light-mode .bg-blue-950\/40,
+html.light-mode .bg-blue-950\/30,
+html.light-mode .bg-purple-950\/40 {
+  background: linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%) !important;
+}
+
+html.light-mode .bg-cyan-950\/40,
+html.light-mode .bg-emerald-950\/40 {
+  background: linear-gradient(135deg, #ecfeff 0%, #f0f9ff 100%) !important;
+}
+
+html.light-mode .bg-rose-950\/80,
+html.light-mode .bg-rose-950\/40,
+html.light-mode .hover\:bg-rose-950:hover,
+html.light-mode .hover\:bg-rose-900\/60:hover {
+  background-color: #ffe4e6 !important;
+}
+
+/* Syncz Overview Gradients in Light Mode */
+html.light-mode [class*="from-cyan-950"],
+html.light-mode [class*="from-emerald-950"],
+html.light-mode [class*="from-blue-950"],
+html.light-mode [class*="from-purple-950"] {
+  background-image: linear-gradient(135deg, #ecfeff 0%, #eff6ff 50%, #eef2ff 100%) !important;
+  border-color: rgba(59, 130, 246, 0.28) !important;
+}
+
+/* 4. Borders & Dividers */
+html.light-mode .border-slate-900,
+html.light-mode .border-slate-800,
+html.light-mode .border-slate-800\/80,
+html.light-mode .border-slate-800\/60,
+html.light-mode .border-slate-700,
+html.light-mode .border-slate-700\/80,
+html.light-mode .border-slate-700\/60 {
+  border-color: #bfdbfe !important;
+}
+
+html.light-mode .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+html.light-mode .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #bfdbfe !important;
+}
+
+/* 5. Form Inputs, Selects & Textareas */
+html.light-mode input,
+html.light-mode select,
+html.light-mode textarea {
+  background-color: #ffffff !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+}
+
+html.light-mode input::placeholder,
+html.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light-mode input:focus,
+html.light-mode select:focus,
+html.light-mode textarea:focus {
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.16) !important;
+}
+
+/* 6. Typography Hierarchy & Contrast in Light Mode */
+html.light-mode .text-white,
+html.light-mode .text-slate-100,
+html.light-mode .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.light-mode .text-slate-300 {
+  color: #1e293b !important;
+}
+
+html.light-mode .text-slate-400 {
+  color: #334155 !important;
+}
+
+html.light-mode .text-slate-500,
+html.light-mode .text-slate-600 {
+  color: #475569 !important;
+}
+
+/* Preserve crisp white text on solid Syncz gradient/filled buttons */
+html.light-mode .bg-emerald-600,
+html.light-mode .bg-emerald-500,
+html.light-mode .bg-cyan-600,
+html.light-mode .bg-cyan-500,
+html.light-mode .bg-blue-600,
+html.light-mode .bg-blue-500,
+html.light-mode .bg-purple-600,
+html.light-mode .bg-purple-500,
+html.light-mode .bg-indigo-600,
+html.light-mode .bg-indigo-500,
+html.light-mode .bg-rose-600,
+html.light-mode .bg-rose-500,
+html.light-mode :not(.bg-clip-text)[class*="from-cyan-500"],
+html.light-mode :not(.bg-clip-text)[class*="from-cyan-600"],
+html.light-mode :not(.bg-clip-text)[class*="from-emerald-600"],
+html.light-mode :not(.bg-clip-text)[class*="from-blue-600"],
+html.light-mode :not(.bg-clip-text)[class*="from-purple-600"],
+html.light-mode .group:hover [class*="group-hover:from-cyan-500"],
+html.light-mode .group:hover .group-hover\:bg-cyan-500,
+html.light-mode .group:hover .group-hover\:bg-emerald-500 {
+  color: #ffffff !important;
+}
+
+html.light-mode .bg-emerald-600 *,
+html.light-mode .bg-cyan-600 *,
+html.light-mode .bg-blue-600 *,
+html.light-mode .bg-purple-600 *,
+html.light-mode .bg-indigo-600 *,
+html.light-mode .bg-rose-600 *,
+html.light-mode [class*="from-cyan-500"] *,
+html.light-mode [class*="from-cyan-600"] *,
+html.light-mode [class*="from-emerald-600"] *,
+html.light-mode [class*="from-blue-600"] *,
+html.light-mode [class*="from-purple-600"] *,
+html.light-mode .group:hover [class*="group-hover:from-cyan-500"] *,
+html.light-mode .group:hover .group-hover\:bg-cyan-500 *,
+html.light-mode .group:hover .group-hover\:bg-emerald-500 * {
+  color: #ffffff !important;
+}
+
+/* 7. Syncz Brand Accent Colors in Light Mode (High-Contrast Cyan, Blue, Indigo) */
+html.light-mode .text-cyan-400,
+html.light-mode .text-cyan-300,
+html.light-mode .text-emerald-400,
+html.light-mode .text-emerald-300 {
+  color: #0891b2 !important;
+}
+
+html.light-mode .text-blue-400,
+html.light-mode .text-blue-300,
+html.light-mode .text-blue-200 {
+  color: #2563eb !important;
+}
+
+html.light-mode .text-indigo-400,
+html.light-mode .text-indigo-300,
+html.light-mode .text-purple-400,
+html.light-mode .text-purple-300 {
+  color: #4f46e5 !important;
+}
+
+html.light-mode .text-amber-400,
+html.light-mode .text-amber-300 {
+  color: #d97706 !important;
+}
+
+html.light-mode .text-rose-400,
+html.light-mode .text-rose-300 {
+  color: #e11d48 !important;
+}
+
+/* 8. Final High-Priority Contrast Enforcement for Schedule Card Buttons in Light Mode */
+html.light-mode .syncz-slot-book-btn,
+html.light-mode .syncz-slot-book-btn *,
+html.light-mode .syncz-slot-edit-btn,
+html.light-mode .syncz-slot-edit-btn *,
+html.light-mode .syncz-slot-lock-btn,
+html.light-mode .syncz-slot-lock-btn *,
+html.light-mode .syncz-slot-unlock-btn,
+html.light-mode .syncz-slot-unlock-btn *,
+html.light-mode .syncz-slot-delete-btn,
+html.light-mode .syncz-slot-delete-btn *,
+html.light-mode .syncz-card-secondary-btn,
+html.light-mode .syncz-card-secondary-btn *,
+html.light-mode .syncz-card-danger-btn,
+html.light-mode .syncz-card-danger-btn *,
+html.light-mode .syncz-slot-confirmed-badge,
+html.light-mode .syncz-slot-confirmed-badge *,
+html.light-mode .syncz-slot-locked-badge,
+html.light-mode .syncz-slot-locked-badge *,
+html.light-mode .syncz-badge-available,
+html.light-mode .syncz-badge-available *,
+html.light-mode .syncz-badge-booked,
+html.light-mode .syncz-badge-booked * {
+  color: #ffffff !important;
+}
+
+/* 9. Lighter Header in Light Mode + Exact Dark-Mode Syncz Brand Colors */
+html.light-mode header.bg-slate-900\/95 {
+  background: linear-gradient(90deg, #1f304d 0%, #283d5e 50%, #253759 100%) !important;
+  border-bottom-color: #3b537a !important;
+  color: #ffffff !important;
+}
+
+.syncz-brand-title,
+html.light-mode .syncz-brand-title,
+html.dark-mode .syncz-brand-title {
+  background-image: linear-gradient(to right, #22d3ee, #60a5fa, #818cf8) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+html.light-mode header .syncz-header-logo-box {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(96, 165, 250, 0.16), rgba(129, 140, 248, 0.16)) !important;
+  border-color: rgba(34, 211, 238, 0.38) !important;
+}
+
+html.light-mode header .bg-slate-950\/80 {
+  background-color: rgba(15, 23, 42, 0.55) !important;
+  border-color: #3b537a !important;
+}
+
+html.light-mode header .bg-slate-800 {
+  background-color: #31486e !important;
+  border-color: #47628f !important;
+  color: #f1f5f9 !important;
+}
+
+html.light-mode header .bg-slate-800:hover {
+  background-color: #3d5885 !important;
+  color: #ffffff !important;
+}
+
+html.light-mode header .text-slate-300 {
+  color: #f1f5f9 !important;
+}
+
+html.light-mode header .hover\:text-rose-300:hover {
+  color: #fda4af !important;
+}
+
+html.light-mode header .text-cyan-400,
+html.light-mode header .text-emerald-400,
+html.light-mode header .text-emerald-300 {
+  color: #22d3ee !important;
+}
+
+html.light-mode header .text-blue-400,
+html.light-mode header .text-blue-300 {
+  color: #60a5fa !important;
+}
+
+html.light-mode header .text-purple-400,
+html.light-mode header .text-purple-300 {
+  color: #818cf8 !important;
+}
+
+/* 10. Ensure Week Tag, Day Chips & Inactive View Buttons share identical Light Mode styling */
+html.light-mode .syncz-week-tag,
+html.light-mode .syncz-filter-chip {
+  background-color: #dbeafe !important;
+  border-color: #60a5fa !important;
+  color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-week-tag button,
+html.light-mode .syncz-week-tag button *,
+html.light-mode .syncz-filter-chip,
+html.light-mode .syncz-filter-chip * {
+  color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-week-tag button:hover,
+html.light-mode .syncz-filter-chip:hover {
+  background-color: #bfdbfe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+}
+
+/* 11. Time, Client Name, CPF & Partner: uniform font size & color, and uniform icon size & color */
+.syncz-booking-meta-text {
+  color: #ffffff !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+html.light-mode .syncz-booking-meta-text {
+  color: #000000 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+.syncz-booking-time-text,
+html.light-mode .syncz-booking-time-text {
+  font-weight: 800 !important;
+}
+
+.syncz-booking-meta-icon {
+  color: #22d3ee !important;
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+html.light-mode .syncz-booking-meta-icon {
+  color: #0284c7 !important;
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+/* 12. Lighter Booked Cards in Light Mode (Clean White/Sky Surface & Soft Borders) */
+html.light-mode .syncz-slot-booked-partner,
+html.light-mode .syncz-slot-booked,
+html.light-mode .syncz-booking-card {
+  background: #f8fbff !important;
+  background-color: #f8fbff !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.06) !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-color: transparent !important;
+}
+
+html.light-mode .syncz-slot-booked-partner:hover,
+html.light-mode .syncz-booking-card:hover {
+  background: #ffffff !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.12) !important;
+}
+
+html.light-mode .syncz-slot-edit-btn,
+html.light-mode .syncz-slot-book-btn {
+  background: #dbeafe !important;
+  border-color: #60a5fa !important;
+  color: #1e3a8a !important;
+  box-shadow: none !important;
+}
+
+html.light-mode .syncz-slot-edit-btn *,
+html.light-mode .syncz-slot-book-btn * {
+  color: #1e3a8a !important;
+}
+
+html.light-mode .group:hover .syncz-slot-edit-btn,
+html.light-mode .group:hover .syncz-slot-book-btn {
+  background: #bfdbfe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+  box-shadow: none !important;
+}
+
+html.light-mode .group:hover .syncz-slot-edit-btn *,
+html.light-mode .group:hover .syncz-slot-book-btn * {
+  color: #1e40af !important;
+}
+
+html.light-mode .syncz-slot-confirmed-badge {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+html.light-mode .syncz-slot-confirmed-badge * {
+  color: #0369a1 !important;
+}
+
+html.light-mode .syncz-card-secondary-btn {
+  background: #dbeafe !important;
+  border-color: #60a5fa !important;
+  color: #1e3a8a !important;
+  box-shadow: none !important;
+}
+
+html.light-mode .syncz-card-secondary-btn * {
+  color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-card-secondary-btn:hover {
+  background: #bfdbfe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+}
+
+/* 13. Uniform Light Mode styling for Livres & Agendados tags in Day Cards */
+html.light-mode .syncz-badge-available,
+html.light-mode .syncz-badge-booked {
+  background-color: #dbeafe !important;
+  border-color: #60a5fa !important;
+  color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-badge-available *,
+html.light-mode .syncz-badge-booked * {
+  color: #1e3a8a !important;
+}
+
+/* 14. Clean Light Mode styling for Cancelar agendamento & Trash buttons inside cards */
+html.light-mode .syncz-card-danger-btn,
+html.light-mode .syncz-slot-delete-btn {
+  background: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #be123c !important;
+  box-shadow: none !important;
+}
+
+html.light-mode .syncz-card-danger-btn *,
+html.light-mode .syncz-slot-delete-btn * {
+  color: #be123c !important;
+}
+
+html.light-mode .syncz-card-danger-btn:hover,
+html.light-mode .syncz-slot-delete-btn:hover {
+  background: #fecdd3 !important;
+  border-color: #fb7185 !important;
+  color: #9f1239 !important;
+}
+
+/* 15. Prevent native date/time inputs from overflowing cards on mobile Safari/WebKit */
+input[type="date"],
+input[type="time"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* 16. Agency Header Options Menu in Light Mode */
+html.light-mode header .syncz-agency-menu {
+  background-color: #ffffff !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.18) !important;
+}
+
+html.light-mode header .syncz-agency-menu button:hover {
+  background-color: #eff6ff !important;
+}
+

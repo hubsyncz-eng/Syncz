@@ -30,7 +30,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   onBookingSuccess,
 }) => {
-  const { currentPartner, currentUser, bookSlot, updateBooking, slots } = useRealtime();
+  const { currentPartner, currentUser, bookSlot, updateBooking, cancelBooking, slots } = useRealtime();
 
   const partnerProfile = currentUser?.role === 'partner'
     ? {
@@ -63,7 +63,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [partnerNotes, setPartnerNotes] = useState(existingBooking?.partnerNotes || '');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleCancelBooking = async () => {
+    if (!existingBooking) {
+      onClose();
+      return;
+    }
+
+    setIsCancelling(true);
+    setErrorMsg(null);
+    const ok = await cancelBooking(
+      existingBooking.id,
+      currentUser?.role === 'agency'
+        ? 'Cancelado pela Agência Centralizadora'
+        : 'Cancelado pelo parceiro negocial'
+    );
+    setIsCancelling(false);
+    if (ok) {
+      onClose();
+    }
+  };
 
   // Helper for CPF masking (000.000.000-00)
   const formatCPF = (val: string) => {
@@ -148,17 +169,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Header: Apenas Data e Horário */}
+        {/* Header: Horário, ao lado Dia da Semana e Data */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800 pr-10">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm sm:text-base font-bold text-white">
+            <div className="flex items-center gap-1.5 text-cyan-400">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 shrink-0" />
+              <span>{slot.startTime}</span>
+            </div>
+            <span className="text-slate-600">•</span>
             <div className="flex items-center gap-1.5 text-blue-400">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
               <span className="capitalize">{formatFullPortugueseDate(slot.date)}</span>
-            </div>
-            <span className="text-slate-600 hidden sm:inline">•</span>
-            <div className="flex items-center gap-1.5 text-cyan-400">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 shrink-0" />
-              <span>{slot.startTime} às {slot.endTime}</span>
             </div>
           </div>
         </div>
@@ -226,7 +247,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 onClick={() => setPropertyType('Imóvel Individual')}
                 className={`py-3 px-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   propertyType === 'Imóvel Individual'
-                    ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/10'
+                    ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
                 }`}
               >
@@ -239,7 +260,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 onClick={() => setPropertyType('Empreendimento')}
                 className={`py-3 px-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   propertyType === 'Empreendimento'
-                    ? 'bg-cyan-600/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
+                    ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/10'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
                 }`}
               >
@@ -272,32 +293,39 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
-            >
-              Cancelar
-            </button>
-
+          {/* Bottom Actions: Salvar Agendamento & Cancelar Agendamento */}
+          <div className="pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="submit"
-              disabled={isSubmitting || !isSlotStillAvailable}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+              disabled={isSubmitting || isCancelling || !isSlotStillAvailable}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-cyan-500/25 disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {existingBooking ? 'Salvando...' : 'Confirmando...'}
+                  <span>Salvando...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />
-                  {existingBooking ? 'Salvar Dados do Agendamento' : 'Confirmar Agendamento Automático'}
+                  <span>Salvar Agendamento</span>
                 </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              disabled={isSubmitting || isCancelling}
+              onClick={handleCancelBooking}
+              className="syncz-card-danger-btn flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-950/50 hover:bg-rose-900/70 text-rose-300 border border-rose-500/35 font-semibold text-xs sm:text-sm transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Cancelando...</span>
+                </>
+              ) : (
+                <span>Cancelar Agendamento</span>
               )}
             </button>
           </div>

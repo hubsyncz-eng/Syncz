@@ -14,7 +14,13 @@ import { ToastContainer } from './components/ToastContainer.tsx';
 import { TimeSlot, Booking } from './types/index.ts';
 
 const MainLayout: React.FC = () => {
-  const { currentUser } = useRealtime();
+  const {
+    currentUser,
+    editingAgencyModal,
+    closeAgencyModal,
+    editingPartnerModal,
+    closePartnerModal,
+  } = useRealtime();
 
   // Modals state
   const [isAgencyRegisterModalOpen, setIsAgencyRegisterModalOpen] = useState(false);
@@ -43,12 +49,13 @@ const MainLayout: React.FC = () => {
             onOpenPartnerRegisterModal={() => setIsPartnerRegisterModalOpen(true)}
             onOpenBatchModal={() => setIsBatchModalOpen(true)}
             onOpenSingleSlotModal={() => setIsSingleSlotModalOpen(true)}
-            onBookSlot={(slot) => setBookingModalData({ slot })}
+            onBookSlot={(slot, booking) => setBookingModalData({ slot, booking })}
           />
         ) : currentUser.role === 'agency' ? (
           <AgencyDashboard
             onOpenBatchModal={() => setIsBatchModalOpen(true)}
             onOpenSingleSlotModal={() => setIsSingleSlotModalOpen(true)}
+            onBookSlot={(slot, booking) => setBookingModalData({ slot, booking })}
           />
         ) : (
           <PartnerView
@@ -76,15 +83,23 @@ const MainLayout: React.FC = () => {
       </footer>
 
       {/* Modals */}
-      {isAgencyRegisterModalOpen && (
+      {(isAgencyRegisterModalOpen || editingAgencyModal.isOpen) && (
         <AgencyRegisterModal
-          onClose={() => setIsAgencyRegisterModalOpen(false)}
+          agencyToEdit={editingAgencyModal.agency || null}
+          onClose={() => {
+            setIsAgencyRegisterModalOpen(false);
+            closeAgencyModal();
+          }}
         />
       )}
 
-      {isPartnerRegisterModalOpen && (
+      {(isPartnerRegisterModalOpen || editingPartnerModal.isOpen) && (
         <PartnerRegisterModal
-          onClose={() => setIsPartnerRegisterModalOpen(false)}
+          partnerToEdit={editingPartnerModal.partner || null}
+          onClose={() => {
+            setIsPartnerRegisterModalOpen(false);
+            closePartnerModal();
+          }}
         />
       )}
 

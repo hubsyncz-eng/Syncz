@@ -129,24 +129,24 @@ export const BatchScheduleModal: React.FC<BatchScheduleModalProps> = ({ onClose 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-2xl w-full p-6 sm:p-8 text-white shadow-2xl relative my-auto">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-2xl w-full p-5 sm:p-8 text-white shadow-2xl relative my-auto overflow-hidden box-border">
         
         {/* Close Button */}
         <button
           onClick={onClose}
           disabled={isSubmitting}
-          className="absolute top-5 right-5 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 pb-5 border-b border-slate-800">
-          <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+        <div className="flex items-center gap-3 pr-10 pb-5 border-b border-slate-800">
+          <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
             <Layers className="w-7 h-7" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
               Abertura de Grade Semanal em Lote
             </h2>
             <p className="text-xs text-slate-400">
@@ -155,11 +155,11 @@ export const BatchScheduleModal: React.FC<BatchScheduleModalProps> = ({ onClose 
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs sm:text-sm">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs sm:text-sm min-w-0">
           
           {/* Week Date Range */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+            <div className="min-w-0 w-full">
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Data Inicial (Ex: Segunda-feira)
               </label>
@@ -168,11 +168,11 @@ export const BatchScheduleModal: React.FC<BatchScheduleModalProps> = ({ onClose 
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm"
+                className="block w-full max-w-full min-w-0 box-border appearance-none px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm"
               />
             </div>
 
-            <div>
+            <div className="min-w-0 w-full">
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Data Final (Ex: Sexta-feira)
               </label>
@@ -181,7 +181,7 @@ export const BatchScheduleModal: React.FC<BatchScheduleModalProps> = ({ onClose 
                 required
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm"
+                className="block w-full max-w-full min-w-0 box-border appearance-none px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-blue-500 text-xs sm:text-sm"
               />
             </div>
           </div>
@@ -293,37 +293,6 @@ export const BatchScheduleModal: React.FC<BatchScheduleModalProps> = ({ onClose 
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Modality */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Modalidade de Atendimento
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setModality('online')}
-                className={`flex-1 py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-                  modality === 'online'
-                    ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <Video className="w-3.5 h-3.5" /> Online (Meet)
-              </button>
-              <button
-                type="button"
-                onClick={() => setModality('presencial')}
-                className={`flex-1 py-2 px-3 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-                  modality === 'presencial'
-                    ? 'bg-amber-600/20 border-amber-500 text-amber-300'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <MapPin className="w-3.5 h-3.5" /> Presencial
-              </button>
-            </div>
           </div>
 
           {errorMsg && (

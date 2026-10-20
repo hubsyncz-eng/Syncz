@@ -1,9 +1,9 @@
 export const DAYS_OF_WEEK = [
-  { id: 1, name: 'Segunda-feira', short: 'Seg' },
-  { id: 2, name: 'Terça-feira', short: 'Ter' },
-  { id: 3, name: 'Quarta-feira', short: 'Qua' },
-  { id: 4, name: 'Quinta-feira', short: 'Qui' },
-  { id: 5, name: 'Sexta-feira', short: 'Sex' },
+  { id: 1, name: 'Segunda-Feira', short: 'Seg' },
+  { id: 2, name: 'Terça-Feira', short: 'Ter' },
+  { id: 3, name: 'Quarta-Feira', short: 'Qua' },
+  { id: 4, name: 'Quinta-Feira', short: 'Qui' },
+  { id: 5, name: 'Sexta-Feira', short: 'Sex' },
   { id: 6, name: 'Sábado', short: 'Sáb' },
   { id: 0, name: 'Domingo', short: 'Dom' },
 ];
@@ -28,6 +28,12 @@ export function formatDateToISO(d: Date): string {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function formatNumericDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
 }
 
 export function formatPortugueseDate(dateStr: string): string {

@@ -2,7 +2,17 @@ import express from 'express';
 import { createServer as createHttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  deleteDoc,
+  getDocs,
+  collection,
+} from 'firebase/firestore';
 import {
   Agency,
   TimeSlot,
@@ -111,6 +121,7 @@ function initSeedData() {
       role: 'Diretora de Parcerias Estratégicas',
       department: 'Diretoria Comercial & Expansão',
       email: 'camila.fonseca@agenciahub.com.br',
+      password: 'usuario123',
       avatarColor: 'bg-emerald-600',
       specialties: ['Alinhamento Estratégico', 'Fechamento de Contrato', 'Joint Ventures'],
     },
@@ -121,6 +132,7 @@ function initSeedData() {
       role: 'Head de Novos Negócios',
       department: 'Relacionamento B2B',
       email: 'rodrigo.vasconcelos@agenciahub.com.br',
+      password: 'usuario123',
       avatarColor: 'bg-blue-600',
       specialties: ['Propostas Comerciais', 'Kickoff de Parceria', 'Expansão de Mercado'],
     },
@@ -131,6 +143,7 @@ function initSeedData() {
       role: 'Especialista em M&A e Compliance',
       department: 'Jurídico & Risco',
       email: 'juliana.martins@agenciahub.com.br',
+      password: 'usuario123',
       avatarColor: 'bg-indigo-600',
       specialties: ['Auditoria de Contrato', 'Compliance Regulatório', 'NDA & Termos'],
     },
@@ -141,6 +154,7 @@ function initSeedData() {
       role: 'Gerente de Integração & Operações',
       department: 'Operações e Logística B2B',
       email: 'marcelo.braga@agenciahub.com.br',
+      password: 'usuario123',
       avatarColor: 'bg-amber-600',
       specialties: ['Integração Técnica', 'Acordo de Nível de Serviço (SLA)', 'Operações'],
     },
@@ -382,6 +396,92 @@ function initSeedData() {
   ];
 }
 
+let db: any = null;
+try {
+  const configPath = path.join(__dirname, 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const fbApp = initializeApp(firebaseConfig, 'syncz-server-fb');
+    db = getFirestore(fbApp, firebaseConfig.firestoreDatabaseId);
+    console.log('[Firestore] Database connected on server:', firebaseConfig.firestoreDatabaseId);
+  }
+} catch (err) {
+  console.warn('[Firestore] Initialization warning:', err);
+}
+
+async function persistDoc(collectionName: string, id: string, data: any) {
+  if (!db) return;
+  try {
+    await setDoc(doc(db, collectionName, id), data);
+  } catch (err) {
+    console.warn(`[Firestore] Failed to save ${collectionName}/${id}:`, err);
+  }
+}
+
+async function removeDoc(collectionName: string, id: string) {
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, collectionName, id));
+  } catch (err) {
+    console.warn(`[Firestore] Failed to delete ${collectionName}/${id}:`, err);
+  }
+}
+
+async function loadPersistedData() {
+  if (!db) {
+    initSeedData();
+    return;
+  }
+  try {
+    const [agSnap, ptSnap, csSnap, slSnap, bkSnap, actSnap] = await Promise.all([
+      getDocs(collection(db, 'agencies')),
+      getDocs(collection(db, 'partners')),
+      getDocs(collection(db, 'consultants')),
+      getDocs(collection(db, 'slots')),
+      getDocs(collection(db, 'bookings')),
+      getDocs(collection(db, 'activities')),
+    ]);
+
+    if (!agSnap.empty) {
+      agencies = agSnap.docs.map((d: any) => d.data() as Agency);
+    }
+    if (!ptSnap.empty) {
+      partners = ptSnap.docs.map((d: any) => d.data() as PartnerProfile);
+    }
+    if (!csSnap.empty) {
+      consultants = csSnap.docs.map((d: any) => d.data() as Consultant);
+    }
+    if (!slSnap.empty) {
+      slots = slSnap.docs.map((d: any) => d.data() as TimeSlot);
+    }
+    if (!bkSnap.empty) {
+      bookings = bkSnap.docs.map((d: any) => d.data() as Booking);
+    }
+    if (!actSnap.empty) {
+      activities = actSnap.docs.map((d: any) => d.data() as ActivityEvent);
+    }
+
+    if (agSnap.empty && ptSnap.empty) {
+      console.log('[Firestore] Empty database detected. Seeding initial baseline data to Firestore...');
+      initSeedData();
+      await Promise.all([
+        ...agencies.map((a) => persistDoc('agencies', a.id, a)),
+        ...partners.map((p) => persistDoc('partners', p.id, p)),
+        ...consultants.map((c) => persistDoc('consultants', c.id, c)),
+        ...slots.map((s) => persistDoc('slots', s.id, s)),
+        ...bookings.map((b) => persistDoc('bookings', b.id, b)),
+        ...activities.map((act) => persistDoc('activities', act.id, act)),
+      ]);
+      console.log('[Firestore] Baseline data written to Firestore.');
+    } else {
+      console.log(`[Firestore] Loaded: ${agencies.length} agencies, ${partners.length} partners, ${slots.length} slots, ${bookings.length} bookings.`);
+    }
+  } catch (err) {
+    console.error('[Firestore] Error loading persisted data:', err);
+    initSeedData();
+  }
+}
+
 initSeedData();
 
 function getFullState(): AppStatePayload {
@@ -476,6 +576,37 @@ app.post('/api/auth/login', (req, res) => {
     });
   }
 
+  // 2.5. Usuário da Agência (Consultor): Login com E-mail Corporativo, Nome ou ID
+  const consultant = consultants.find(
+    (c) =>
+      c.email.toLowerCase() === cleanUser.toLowerCase() ||
+      c.name.toLowerCase() === cleanUser.toLowerCase() ||
+      c.id.toLowerCase() === cleanUser.toLowerCase()
+  );
+
+  if (consultant) {
+    const validConsultantPass = consultant.password || 'usuario123';
+    if (cleanPass !== validConsultantPass) {
+      return res.status(401).json({
+        error: 'Senha incorreta para o usuário da agência informado.',
+      });
+    }
+    const consultantAgency = agencies.find((a) => a.id === consultant.agencyId) || agencies[0];
+    return res.json({
+      success: true,
+      session: {
+        role: 'agency',
+        id: consultant.id,
+        name: consultant.name,
+        email: consultant.email,
+        agencyId: consultant.agencyId || consultantAgency?.id || 'ag_1',
+        representative: consultant.name,
+        badgeColor: consultant.avatarColor || consultantAgency?.badgeColor,
+        isAgencyUser: true,
+      },
+    });
+  }
+
   // 3. Parceiro Negocial: Login com E-mail, CNPJ, Nome, ID ou Username
   const partner = partners.find(
     (p) =>
@@ -515,17 +646,18 @@ app.post('/api/auth/login', (req, res) => {
 
 // Admin registers a new Agency
 app.post('/api/agencies', (req, res) => {
-  const { name, legalName, cnpj, email, phone, city, state, managerName, description, password } = req.body;
+  const { name, legalName, cnpj, address, email, phone, city, state, managerName, description, password } = req.body;
 
-  if (!name || !legalName || !cnpj || !email) {
+  if (!name || !email) {
     return res.status(400).json({ error: 'Preencha os campos obrigatórios da agência.' });
   }
 
   const newAgency: Agency = {
     id: `ag_${Date.now()}`,
     name,
-    legalName,
-    cnpj,
+    legalName: legalName || '',
+    cnpj: cnpj || '',
+    address: address || '',
     email,
     phone: phone || '',
     city: city || 'São Paulo',
@@ -539,16 +671,18 @@ app.post('/api/agencies', (req, res) => {
   };
 
   agencies.push(newAgency);
+  persistDoc('agencies', newAgency.id, newAgency);
 
   const act: ActivityEvent = {
     id: `act_${Date.now()}`,
     type: 'agency_registered',
     timestamp: new Date().toISOString(),
     title: 'Nova Agência Cadastrada',
-    description: `O Administrador cadastrou a ${newAgency.name} (${newAgency.cnpj}).`,
+    description: `O Administrador cadastrou a ${newAgency.name}.`,
     agencyName: newAgency.name,
   };
   activities.unshift(act);
+  persistDoc('activities', act.id, act);
 
   broadcast({
     type: 'AGENCY_REGISTERED',
@@ -556,6 +690,76 @@ app.post('/api/agencies', (req, res) => {
   });
 
   return res.status(201).json(newAgency);
+});
+
+// Admin updates an existing Agency
+app.put('/api/agencies/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, legalName, cnpj, address, email, phone, city, state, managerName, description, password } = req.body;
+
+  const idx = agencies.findIndex((a) => a.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Agência não encontrada.' });
+  }
+
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Preencha os campos obrigatórios da agência.' });
+  }
+
+  const updatedAgency: Agency = {
+    ...agencies[idx],
+    name: name.trim(),
+    legalName: legalName !== undefined ? legalName.trim() : agencies[idx].legalName,
+    cnpj: cnpj !== undefined ? cnpj.trim() : agencies[idx].cnpj,
+    address: address !== undefined ? address.trim() : agencies[idx].address,
+    email: email.trim(),
+    phone: phone !== undefined ? phone.trim() : agencies[idx].phone,
+    city: city || agencies[idx].city,
+    state: state || agencies[idx].state,
+    managerName: managerName || agencies[idx].managerName,
+    description: description !== undefined ? description : agencies[idx].description,
+    password: password || agencies[idx].password || 'agencia123',
+  };
+
+  agencies[idx] = updatedAgency;
+  persistDoc('agencies', updatedAgency.id, updatedAgency);
+
+  const act: ActivityEvent = {
+    id: `act_${Date.now()}`,
+    type: 'agency_registered',
+    timestamp: new Date().toISOString(),
+    title: 'Cadastro de Agência Atualizado',
+    description: `Os dados cadastrais da agência ${updatedAgency.name} foram atualizados no sistema.`,
+    agencyName: updatedAgency.name,
+  };
+  activities.unshift(act);
+  persistDoc('activities', act.id, act);
+
+  broadcast({
+    type: 'AGENCY_REGISTERED',
+    payload: { agency: updatedAgency, agencies, activity: act },
+  });
+
+  return res.json(updatedAgency);
+});
+
+// Admin deletes an Agency
+app.delete('/api/agencies/:id', (req, res) => {
+  const { id } = req.params;
+  const idx = agencies.findIndex((a) => a.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Agência não encontrada.' });
+  }
+
+  agencies = agencies.filter((a) => a.id !== id);
+  removeDoc('agencies', id);
+
+  broadcast({
+    type: 'AGENCY_REGISTERED',
+    payload: { agencies },
+  });
+
+  return res.json({ success: true });
 });
 
 // Admin or partner registers a new Partner
@@ -581,13 +785,199 @@ app.post('/api/partners', (req, res) => {
   };
 
   partners.push(newPartner);
+  persistDoc('partners', newPartner.id, newPartner);
+
+  const act: ActivityEvent = {
+    id: `act_${Date.now()}`,
+    type: 'partner_registered',
+    timestamp: new Date().toISOString(),
+    title: 'Novo Parceiro Cadastrado',
+    description: `O parceiro ${newPartner.name} foi homologado no sistema.`,
+    partnerName: newPartner.name,
+  };
+  activities.unshift(act);
+  persistDoc('activities', act.id, act);
 
   broadcast({
     type: 'PARTNER_REGISTERED',
-    payload: { partner: newPartner, partners },
+    payload: { partner: newPartner, partners, activity: act },
   });
 
   return res.status(201).json(newPartner);
+});
+
+// Admin or partner updates an existing Partner
+app.put('/api/partners/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, segment, representative, email, phone, cnpj, password } = req.body;
+
+  const idx = partners.findIndex((p) => p.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Parceiro não encontrado.' });
+  }
+
+  if (!name || !email || !cnpj) {
+    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios do parceiro.' });
+  }
+
+  const updatedPartner: PartnerProfile = {
+    ...partners[idx],
+    name: name.trim(),
+    segment: segment || partners[idx].segment || 'Parceiro Negocial',
+    representative: representative || name.trim(),
+    email: email.trim(),
+    phone: phone !== undefined ? phone.trim() : partners[idx].phone,
+    cnpj: cnpj.trim(),
+    password: password || partners[idx].password || 'parceiro123',
+  };
+
+  partners[idx] = updatedPartner;
+  persistDoc('partners', updatedPartner.id, updatedPartner);
+
+  // Replicate updated partner details to all bookings of this partner
+  let hasUpdatedBookings = false;
+  bookings = bookings.map((b) => {
+    if (b.partnerId === updatedPartner.id) {
+      hasUpdatedBookings = true;
+      const updatedB = {
+        ...b,
+        partnerName: updatedPartner.name,
+        partnerRepresentative: updatedPartner.representative,
+        partnerEmail: updatedPartner.email,
+        partnerPhone: updatedPartner.phone || b.partnerPhone,
+        partnerCnpj: updatedPartner.cnpj,
+      };
+      persistDoc('bookings', updatedB.id, updatedB);
+      return updatedB;
+    }
+    return b;
+  });
+
+  const act: ActivityEvent = {
+    id: `act_${Date.now()}`,
+    type: 'partner_registered',
+    timestamp: new Date().toISOString(),
+    title: 'Cadastro de Parceiro Atualizado',
+    description: `Os dados cadastrais de ${updatedPartner.name} foram atualizados no sistema.`,
+    partnerName: updatedPartner.name,
+  };
+  activities.unshift(act);
+  persistDoc('activities', act.id, act);
+
+  broadcast({
+    type: 'PARTNER_REGISTERED',
+    payload: {
+      partner: updatedPartner,
+      partners,
+      bookings: hasUpdatedBookings ? bookings : undefined,
+      activity: act,
+    },
+  });
+
+  return res.json(updatedPartner);
+});
+
+// Admin deletes a Partner
+app.delete('/api/partners/:id', (req, res) => {
+  const { id } = req.params;
+  const idx = partners.findIndex((p) => p.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Parceiro não encontrado.' });
+  }
+
+  partners = partners.filter((p) => p.id !== id);
+  removeDoc('partners', id);
+
+  broadcast({
+    type: 'PARTNER_REGISTERED',
+    payload: { partners },
+  });
+
+  return res.json({ success: true });
+});
+
+// Create Agency User (Consultant)
+app.post('/api/consultants', (req, res) => {
+  const { agencyId, name, role, department, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios do usuário.' });
+  }
+
+  const colors = ['bg-emerald-600', 'bg-blue-600', 'bg-indigo-600', 'bg-amber-600', 'bg-cyan-600'];
+  const newConsultant: Consultant = {
+    id: `c_${Date.now()}`,
+    agencyId: agencyId || agencies[0]?.id || 'ag_1',
+    name: name.trim(),
+    role: (role || 'Usuário da Agência').trim(),
+    department: (department || 'Atendimento & Negócios').trim(),
+    email: email.trim(),
+    password: password.trim(),
+    avatarColor: colors[Math.floor(Math.random() * colors.length)],
+    specialties: ['Atendimento', 'Negócios'],
+  };
+
+  consultants.push(newConsultant);
+  persistDoc('consultants', newConsultant.id, newConsultant);
+
+  broadcast({
+    type: 'CONSULTANTS_UPDATED',
+    payload: { consultant: newConsultant, consultants },
+  });
+
+  return res.status(201).json(newConsultant);
+});
+
+// Update Agency User (Consultant)
+app.put('/api/consultants/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, role, department, email, password } = req.body;
+
+  const idx = consultants.findIndex((c) => c.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Usuário não encontrado.' });
+  }
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios do usuário.' });
+  }
+
+  const updated: Consultant = {
+    ...consultants[idx],
+    name: name.trim(),
+    role: (role || consultants[idx].role || 'Usuário da Agência').trim(),
+    department: (department || consultants[idx].department || 'Atendimento & Negócios').trim(),
+    email: email.trim(),
+    password: password.trim(),
+  };
+
+  consultants[idx] = updated;
+  persistDoc('consultants', updated.id, updated);
+
+  broadcast({
+    type: 'CONSULTANTS_UPDATED',
+    payload: { consultant: updated, consultants },
+  });
+
+  return res.json(updated);
+});
+
+// Delete Agency User (Consultant)
+app.delete('/api/consultants/:id', (req, res) => {
+  const { id } = req.params;
+  const idx = consultants.findIndex((c) => c.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Usuário não encontrado.' });
+  }
+
+  consultants = consultants.filter((c) => c.id !== id);
+  removeDoc('consultants', id);
+
+  broadcast({
+    type: 'CONSULTANTS_UPDATED',
+    payload: { consultants },
+  });
+
+  return res.json({ success: true });
 });
 
 // Create single slot
@@ -633,6 +1023,7 @@ app.post('/api/slots', (req, res) => {
   };
 
   slots.unshift(newSlot);
+  persistDoc('slots', newSlot.id, newSlot);
 
   const act: ActivityEvent = {
     id: `act_${Date.now()}`,
@@ -643,6 +1034,7 @@ app.post('/api/slots', (req, res) => {
     slotTime: `${newSlot.date} ${newSlot.startTime}`,
   };
   activities.unshift(act);
+  persistDoc('activities', act.id, act);
 
   broadcast({
     type: 'SLOTS_UPDATED',
@@ -746,6 +1138,9 @@ app.post('/api/slots/batch', (req, res) => {
   }
 
   slots.push(...newSlots);
+  for (const s of newSlots) {
+    persistDoc('slots', s.id, s);
+  }
 
   const act: ActivityEvent = {
     id: `act_${Date.now()}`,
@@ -755,6 +1150,7 @@ app.post('/api/slots/batch', (req, res) => {
     description: `A Agência abriu ${newSlots.length} novos horários com ${consultant.name}.`,
   };
   activities.unshift(act);
+  persistDoc('activities', act.id, act);
 
   broadcast({
     type: 'SLOTS_UPDATED',
@@ -778,6 +1174,7 @@ app.patch('/api/slots/:id/toggle', (req, res) => {
   }
 
   slot.status = slot.status === 'available' ? 'locked' : 'available';
+  persistDoc('slots', slot.id, slot);
 
   broadcast({
     type: 'SLOT_STATUS_TOGGLED',
@@ -801,6 +1198,7 @@ app.delete('/api/slots/:id', (req, res) => {
   }
 
   slots.splice(index, 1);
+  removeDoc('slots', id);
 
   broadcast({
     type: 'SLOTS_UPDATED',
@@ -889,6 +1287,8 @@ app.post('/api/bookings', (req, res) => {
   slot.bookingId = bookingId;
 
   bookings.unshift(booking);
+  persistDoc('slots', slot.id, slot);
+  persistDoc('bookings', booking.id, booking);
 
   const act: ActivityEvent = {
     id: `act_${Date.now()}`,
@@ -901,6 +1301,7 @@ app.post('/api/bookings', (req, res) => {
     protocol,
   };
   activities.unshift(act);
+  persistDoc('activities', act.id, act);
 
   broadcast({
     type: 'SLOT_BOOKED',
@@ -935,6 +1336,8 @@ app.patch('/api/bookings/:id', (req, res) => {
   if (partnerNotes !== undefined) booking.partnerNotes = partnerNotes;
   booking.agendaTopic = `${booking.propertyType || 'Imóvel'}: ${booking.clientName || 'Cliente'}`;
 
+  persistDoc('bookings', booking.id, booking);
+
   broadcast({
     type: 'BOOKING_UPDATED',
     payload: { booking, bookings },
@@ -965,7 +1368,9 @@ app.post('/api/bookings/:id/cancel', (req, res) => {
   if (slot) {
     slot.status = 'available';
     slot.bookingId = undefined;
+    persistDoc('slots', slot.id, slot);
   }
+  persistDoc('bookings', booking.id, booking);
 
   const act: ActivityEvent = {
     id: `act_${Date.now()}`,
@@ -977,6 +1382,7 @@ app.post('/api/bookings/:id/cancel', (req, res) => {
     protocol: booking.protocol,
   };
   activities.unshift(act);
+  persistDoc('activities', act.id, act);
 
   broadcast({
     type: 'SLOT_CANCELLED',
@@ -1004,6 +1410,7 @@ app.post('/api/reset-demo', (_req, res) => {
 });
 
 async function startServer() {
+  await loadPersistedData();
   const server = createHttpServer(app);
   const wss = new WebSocketServer({ server });
 

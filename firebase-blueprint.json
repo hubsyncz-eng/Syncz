@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "Agency": {
+      "title": "Agency",
+      "description": "Centralizing Agency registered in the system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "legalName": { "type": "string", "maxLength": 200 },
+        "cnpj": { "type": "string", "maxLength": 30 },
+        "address": { "type": "string", "maxLength": 300 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "city": { "type": "string", "maxLength": 100 },
+        "state": { "type": "string", "maxLength": 10 },
+        "managerName": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 500 },
+        "badgeColor": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "password": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "PartnerProfile": {
+      "title": "PartnerProfile",
+      "description": "Business Partner registered in the ecosystem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 200 },
+        "segment": { "type": "string", "maxLength": 100 },
+        "representative": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "cnpj": { "type": "string", "maxLength": 30 },
+        "password": { "type": "string", "maxLength": 100 },
+        "badgeColor": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Consultant": {
+      "title": "Consultant",
+      "description": "Agency internal user or consultant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "maxLength": 150 },
+        "department": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "password": { "type": "string", "maxLength": 100 },
+        "avatarColor": { "type": "string", "maxLength": 50 },
+        "specialties": { "type": "array" }
+      },
+      "required": ["id", "agencyId", "name", "email"]
+    },
+    "TimeSlot": {
+      "title": "TimeSlot",
+      "description": "Weekly negotiation schedule slot",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "date": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "durationMinutes": { "type": "number" },
+        "consultantId": { "type": "string" },
+        "consultantName": { "type": "string", "maxLength": 150 },
+        "consultantRole": { "type": "string", "maxLength": 150 },
+        "serviceCategory": { "type": "string", "maxLength": 150 },
+        "modality": { "type": "string", "enum": ["online", "presencial", "hibrido"] },
+        "maxSimultaneousPartners": { "type": "number" },
+        "locationOrLink": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["available", "locked", "booked"] },
+        "partnerId": { "type": "string" },
+        "partnerName": { "type": "string", "maxLength": 150 },
+        "bookingId": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "agencyId", "date", "startTime", "endTime", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Confirmed booking for a slot",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slotId": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "agencyName": { "type": "string", "maxLength": 150 },
+        "partnerId": { "type": "string" },
+        "partnerName": { "type": "string", "maxLength": 150 },
+        "date": { "type": "string", "maxLength": 20 },
+        "startTime": { "type": "string", "maxLength": 10 },
+        "endTime": { "type": "string", "maxLength": 10 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "clientCpf": { "type": "string", "maxLength": 30 },
+        "clientPhone": { "type": "string", "maxLength": 50 },
+        "clientEmail": { "type": "string", "maxLength": 150 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "modality": { "type": "string", "enum": ["online", "presencial", "hibrido"] },
+        "locationOrLink": { "type": "string", "maxLength": 300 },
+        "protocol": { "type": "string", "maxLength": 50 },
+        "consultantName": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["confirmed", "in_progress", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "slotId", "partnerId", "date", "startTime", "status"]
+    },
+    "ActivityEvent": {
+      "title": "ActivityEvent",
+      "description": "Global audit event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "maxLength": 100 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 500 },
+        "agencyName": { "type": "string", "maxLength": 150 },
+        "partnerName": { "type": "string", "maxLength": 150 },
+        "protocol": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "type", "timestamp", "title"]
+    }
+  },
+  "firestore": {
+    "/agencies/{agencyId}": {
+      "schema": { "$ref": "#/entities/Agency" },
+      "description": "Centralizing agencies documents"
+    },
+    "/partners/{partnerId}": {
+      "schema": { "$ref": "#/entities/PartnerProfile" },
+      "description": "Registered partner profiles"
+    },
+    "/consultants/{consultantId}": {
+      "schema": { "$ref": "#/entities/Consultant" },
+      "description": "Agency internal users and consultants"
+    },
+    "/slots/{slotId}": {
+      "schema": { "$ref": "#/entities/TimeSlot" },
+      "description": "Calendar schedule time slots"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Confirmed partner bookings"
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/ActivityEvent" },
+      "description": "System audit activities and logs"
+    }
+  }
+}
