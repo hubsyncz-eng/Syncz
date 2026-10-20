@@ -748,36 +748,34 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
             </button>
           </div>
 
-          {/* Day Filter Chips (only days that have schedules in this week) */}
-          {activeWeekDays.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
-              {activeWeekDays.map((wd) => (
-                <button
-                  key={wd.dateStr}
-                  type="button"
-                  onClick={() => {
-                    if (isTodayMode) {
-                      setIsTodayMode(false);
-                      setDayOffset(0);
-                      setSelectedDayFilter(wd.dateStr);
-                    } else {
-                      setSelectedDayFilter((prev) => (prev === wd.dateStr ? null : wd.dateStr));
-                    }
-                    if (activeTab !== 'calendar') {
-                      setActiveTab('calendar');
-                    }
-                  }}
-                  className={`px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all cursor-pointer ${
-                    effectiveDayFilter === wd.dateStr
-                      ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-sm'
-                      : 'syncz-filter-chip bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {wd.short}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Day Filter Chips (Seg, Ter, Qua, Qui, Sex, Sáb, Dom) */}
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            {weekDays.map((wd) => (
+              <button
+                key={wd.dateStr}
+                type="button"
+                onClick={() => {
+                  if (isTodayMode) {
+                    setIsTodayMode(false);
+                    setDayOffset(0);
+                    setSelectedDayFilter(wd.dateStr);
+                  } else {
+                    setSelectedDayFilter((prev) => (prev === wd.dateStr ? null : wd.dateStr));
+                  }
+                  if (activeTab !== 'calendar') {
+                    setActiveTab('calendar');
+                  }
+                }}
+                className={`px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all cursor-pointer ${
+                  effectiveDayFilter === wd.dateStr
+                    ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-sm'
+                    : 'syncz-filter-chip bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {wd.short}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Two Buttons below the days: Horários da Semana & Agendados */}

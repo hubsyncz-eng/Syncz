@@ -1,11 +1,11 @@
 export const DAYS_OF_WEEK = [
-  { id: 1, name: 'Segunda-Feira', short: 'Seg' },
-  { id: 2, name: 'Terça-Feira', short: 'Ter' },
-  { id: 3, name: 'Quarta-Feira', short: 'Qua' },
-  { id: 4, name: 'Quinta-Feira', short: 'Qui' },
-  { id: 5, name: 'Sexta-Feira', short: 'Sex' },
-  { id: 6, name: 'Sábado', short: 'Sáb' },
-  { id: 0, name: 'Domingo', short: 'Dom' },
+  { id: 1, name: 'Seg', short: 'Seg' },
+  { id: 2, name: 'Ter', short: 'Ter' },
+  { id: 3, name: 'Qua', short: 'Qua' },
+  { id: 4, name: 'Qui', short: 'Qui' },
+  { id: 5, name: 'Sex', short: 'Sex' },
+  { id: 6, name: 'Sáb', short: 'Sáb' },
+  { id: 0, name: 'Dom', short: 'Dom' },
 ];
 
 export function getMonday(d: Date): Date {
@@ -40,23 +40,25 @@ export function formatPortugueseDate(dateStr: string): string {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('pt-BR', {
-    weekday: 'short',
+  const dayShort = DAYS_OF_WEEK.find((dw) => dw.id === date.getDay())?.short || '';
+  const monthPart = date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'short',
   });
+  return `${dayShort}, ${monthPart}`;
 }
 
 export function formatFullPortugueseDate(dateStr: string): string {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('pt-BR', {
-    weekday: 'long',
+  const dayShort = DAYS_OF_WEEK.find((dw) => dw.id === date.getDay())?.short || '';
+  const restPart = date.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
   });
+  return `${dayShort}, ${restPart}`;
 }
 
 export function formatRelativeTime(isoStr: string): string {
