@@ -269,20 +269,31 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return map;
   }, [filteredSlots, weekDays]);
 
-  // Confirmed bookings list filtered
+  // Confirmed bookings list filtered and ordered by date and time
   const filteredBookings = useMemo(() => {
-    return bookings.filter((b) => {
-      if (b.status === 'cancelled') return false;
-      if (!searchTerm) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        b.partnerName.toLowerCase().includes(term) ||
-        b.protocol.toLowerCase().includes(term) ||
-        b.consultantName.toLowerCase().includes(term) ||
-        b.agendaTopic.toLowerCase().includes(term)
-      );
-    });
-  }, [bookings, searchTerm]);
+    return bookings
+      .filter((b) => {
+        if (b.status === 'cancelled') return false;
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        return (
+          b.partnerName.toLowerCase().includes(term) ||
+          b.protocol.toLowerCase().includes(term) ||
+          b.consultantName.toLowerCase().includes(term) ||
+          b.agendaTopic.toLowerCase().includes(term)
+        );
+      })
+      .sort((a, b) => {
+        const slotA = slots.find((sl) => sl.id === a.slotId);
+        const slotB = slots.find((sl) => sl.id === b.slotId);
+        const dateA = slotA?.date || a.slotDate || '';
+        const dateB = slotB?.date || b.slotDate || '';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        const timeA = slotA?.startTime || a.slotStartTime || '';
+        const timeB = slotB?.startTime || b.slotStartTime || '';
+        return timeA.localeCompare(timeB);
+      });
+  }, [bookings, slots, searchTerm]);
 
   const handleConfirmCancel = async () => {
     if (!cancellingBookingId) return;

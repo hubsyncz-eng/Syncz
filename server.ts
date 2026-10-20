@@ -1048,10 +1048,22 @@ app.post('/api/bookings', (req, res) => {
   });
 });
 
-// Update booking fields (Cliente, CPF, Imóvel/Empreendimento, Notas)
+// Update booking fields (Cliente, CPF, Imóvel/Empreendimento, Parceiro, Notas, Outcome)
 app.patch('/api/bookings/:id', (req, res) => {
   const { id } = req.params;
-  const { clientName, clientCpf, propertyType, partnerNotes } = req.body;
+  const {
+    clientName,
+    clientCpf,
+    propertyType,
+    partnerNotes,
+    partnerId,
+    partnerName,
+    partnerRepresentative,
+    partnerEmail,
+    partnerPhone,
+    partnerCnpj,
+    outcome,
+  } = req.body;
 
   const booking = bookings.find((b) => b.id === id);
   if (!booking) {
@@ -1062,6 +1074,15 @@ app.patch('/api/bookings/:id', (req, res) => {
   if (clientCpf) booking.clientCpf = clientCpf;
   if (propertyType) booking.propertyType = propertyType;
   if (partnerNotes !== undefined) booking.partnerNotes = partnerNotes;
+  if (partnerId) booking.partnerId = partnerId;
+  if (partnerName) booking.partnerName = partnerName;
+  if (partnerRepresentative) booking.partnerRepresentative = partnerRepresentative;
+  if (partnerEmail) booking.partnerEmail = partnerEmail;
+  if (partnerPhone !== undefined) booking.partnerPhone = partnerPhone;
+  if (partnerCnpj !== undefined) booking.partnerCnpj = partnerCnpj;
+  if (outcome !== undefined) {
+    booking.outcome = outcome || undefined;
+  }
   booking.agendaTopic = `${booking.propertyType || 'Imóvel'}: ${booking.clientName || 'Cliente'}`;
 
   persistDoc('bookings', booking.id, booking);

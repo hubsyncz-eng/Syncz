@@ -10,6 +10,7 @@ import {
   AppStatePayload,
   UserSession,
   PropertyType,
+  BookingOutcome,
 } from '../types/index.ts';
 import {
   db,
@@ -104,8 +105,16 @@ interface RealtimeContextValue {
       clientCpf: string;
       propertyType: PropertyType;
       partnerNotes?: string;
+      partnerId?: string;
+      partnerName?: string;
+      partnerRepresentative?: string;
+      partnerEmail?: string;
+      partnerPhone?: string;
+      partnerCnpj?: string;
+      outcome?: BookingOutcome;
     }
   ) => Promise<Booking>;
+  updateBookingOutcome: (bookingId: string, outcome: BookingOutcome | null) => Promise<void>;
   cancelBooking: (bookingId: string, reason?: string) => Promise<boolean>;
   toggleSlotStatus: (slotId: string) => Promise<boolean>;
   deleteSlot: (slotId: string) => Promise<boolean>;
@@ -1360,6 +1369,12 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clientCpf: string;
       propertyType: PropertyType;
       partnerNotes?: string;
+      partnerId?: string;
+      partnerName?: string;
+      partnerRepresentative?: string;
+      partnerEmail?: string;
+      partnerPhone?: string;
+      partnerCnpj?: string;
     }
   ): Promise<Booking> => {
     const apiRes = await safeFetchJson(`/api/bookings/${id}`, {
@@ -1381,6 +1396,17 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         propertyType: updateData.propertyType,
         partnerNotes:
           updateData.partnerNotes !== undefined ? updateData.partnerNotes : existing.partnerNotes,
+        partnerId: updateData.partnerId || existing.partnerId,
+        partnerName: updateData.partnerName || existing.partnerName,
+        partnerRepresentative:
+          updateData.partnerRepresentative || existing.partnerRepresentative,
+        partnerEmail: updateData.partnerEmail || existing.partnerEmail,
+        partnerPhone:
+          updateData.partnerPhone !== undefined ? updateData.partnerPhone : existing.partnerPhone,
+        partnerCnpj:
+          updateData.partnerCnpj !== undefined ? updateData.partnerCnpj : existing.partnerCnpj,
+        outcome:
+          updateData.outcome !== undefined ? updateData.outcome : existing.outcome,
         agendaTopic: `${updateData.propertyType || 'Imóvel'}: ${updateData.clientName || 'Cliente'}`,
       };
     }
@@ -1395,6 +1421,36 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     return updatedBooking;
+  };
+
+  const updateBookingOutcome = async (
+    bookingId: string,
+    outcome: BookingOutcome | null
+  ): Promise<void> => {
+    const existing = bookings.find((b) => b.id === bookingId);
+    if (!existing) return;
+
+    await safeFetchJson(`/api/bookings/${bookingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outcome: outcome || '' }),
+    });
+
+    const updatedBooking: Booking = {
+      ...existing,
+      outcome: outcome || undefined,
+    };
+
+    await persistToFirestore('bookings', updatedBooking.id, updatedBooking);
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? updatedBooking : b)));
+
+    addToast({
+      type: 'info',
+      title: outcome ? `Status: ${outcome}` : 'Status Removido',
+      message: outcome
+        ? `O agendamento de ${existing.clientName || existing.partnerName} foi marcado como "${outcome}".`
+        : `O status do agendamento de ${existing.clientName || existing.partnerName} foi limpo.`,
+    });
   };
 
   const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
@@ -1748,6 +1804,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deleteConsultant,
         bookSlot,
         updateBooking,
+        updateBookingOutcome,
         cancelBooking,
         toggleSlotStatus,
         deleteSlot,

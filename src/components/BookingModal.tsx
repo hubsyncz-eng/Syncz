@@ -7,6 +7,8 @@ import {
   Calendar,
   Clock,
   Building,
+  Building2,
+  ChevronDown,
   Home,
   User,
   CreditCard,
@@ -30,31 +32,65 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   onClose,
   onBookingSuccess,
 }) => {
-  const { currentPartner, currentUser, bookSlot, updateBooking, cancelBooking, slots } = useRealtime();
+  const {
+    partners,
+    currentPartner,
+    currentUser,
+    adminPerspective,
+    bookSlot,
+    updateBooking,
+    cancelBooking,
+    slots,
+  } = useRealtime();
 
-  const partnerProfile = currentUser?.role === 'partner'
-    ? {
-        id: currentUser.partnerId || currentUser.id,
-        name: currentUser.name,
-        representative: currentUser.representative || currentUser.name,
-        email: currentUser.email,
-        phone: '',
-        cnpj: currentUser.cnpj || '',
-      }
-    : (currentPartner || {
-        id: 'p_temp',
-        name: 'Parceiro Negocial',
-        representative: 'Representante',
-        email: 'parceiro@empresa.com',
-        phone: '',
-        cnpj: '',
-      });
+  // Check if the inclusion/edit is being done by the agency or an agency user
+  const isAgencyActor =
+    currentUser?.role === 'agency' ||
+    (currentUser?.role === 'admin' && adminPerspective === 'agency_view');
+
+  const initialPartnerId = existingBooking
+    ? partners.find(
+        (p) => p.id === existingBooking.partnerId || p.name === existingBooking.partnerName
+      )?.id || existingBooking.partnerId || ''
+    : '';
+
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>(initialPartnerId);
+
+  const selectedPartnerFromList = partners.find((p) => p.id === selectedPartnerId);
+
+  const partnerProfile =
+    currentUser?.role === 'partner'
+      ? {
+          id: currentUser.partnerId || currentUser.id,
+          name: currentUser.name,
+          representative: currentUser.representative || currentUser.name,
+          email: currentUser.email,
+          phone: '',
+          cnpj: currentUser.cnpj || '',
+        }
+      : selectedPartnerFromList
+        ? {
+            id: selectedPartnerFromList.id,
+            name: selectedPartnerFromList.name,
+            representative: selectedPartnerFromList.representative || selectedPartnerFromList.name,
+            email: selectedPartnerFromList.email,
+            phone: selectedPartnerFromList.phone || '',
+            cnpj: selectedPartnerFromList.cnpj || '',
+          }
+        : currentPartner || {
+            id: 'p_temp',
+            name: 'Parceiro Negocial',
+            representative: 'Representante',
+            email: 'parceiro@empresa.com',
+            phone: '',
+            cnpj: '',
+          };
 
   // Verify real-time slot state in case another partner booked it
   const currentSlotInState = slots.find((s) => s.id === slot.id) || slot;
   const isSlotStillAvailable = existingBooking || currentSlotInState.status === 'available';
 
-  // Specific Booking Fields: Cliente, CPF, Seletor Imóvel/Empreendimento, Notas
+  // Specific Booking Fields: Cliente, CPF, Seletor Imóvel/Empreendimento, Parceiro (Agência), Notas
   const [clientName, setClientName] = useState(existingBooking?.clientName || '');
   const [clientCpf, setClientCpf] = useState(existingBooking?.clientCpf || '');
   const [propertyType, setPropertyType] = useState<PropertyType>(
@@ -112,6 +148,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
+    if (isAgencyActor && !selectedPartnerFromList) {
+      setErrorMsg('Por favor selecione um dos parceiros cadastrados.');
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg(null);
 
@@ -122,6 +163,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           clientCpf: clientCpf.trim(),
           propertyType,
           partnerNotes: partnerNotes.trim() ? partnerNotes.trim() : undefined,
+          ...(isAgencyActor && selectedPartnerFromList
+            ? {
+                partnerId: selectedPartnerFromList.id,
+                partnerName: selectedPartnerFromList.name,
+                partnerRepresentative:
+                  selectedPartnerFromList.representative || selectedPartnerFromList.name,
+                partnerEmail: selectedPartnerFromList.email,
+                partnerPhone: selectedPartnerFromList.phone || '',
+                partnerCnpj: selectedPartnerFromList.cnpj || '',
+              }
+            : {}),
         });
         onBookingSuccess(updated);
         return;
@@ -269,6 +321,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Caixa seletora de Parceiro Cadastrado (acima de Notas para Agência e Usuários da Agência) */}
+          {isAgencyActor && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Parceiro Cadastrado *
+              </label>
+              <div className="relative">
+                <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
+                <select
+                  required
+                  value={selectedPartnerId}
+                  onChange={(e) => setSelectedPartnerId(e.target.value)}
+                  className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-cyan-500 text-xs sm:text-sm appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>
+                    Selecione um parceiro cadastrado...
+                  </option>
+                  {partners.map((partner) => (
+                    <option key={partner.id} value={partner.id}>
+                      {partner.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
+              </div>
+            </div>
+          )}
 
           {/* Espaço para Notas */}
           <div>

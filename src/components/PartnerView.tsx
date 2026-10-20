@@ -162,12 +162,21 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     return slots.filter((s) => weekDateSet.has(s.date) && s.status === 'available').length;
   }, [slots, weekDateSet]);
 
-  // Partner's own bookings
+  // Partner's own bookings ordered by date and time
   const myBookings = useMemo(() => {
-    return bookings.filter(
-      (b) => b.partnerId === activePartner.id && b.status === 'confirmed'
-    );
-  }, [bookings, activePartner.id]);
+    return bookings
+      .filter((b) => b.partnerId === activePartner.id && b.status === 'confirmed')
+      .sort((a, b) => {
+        const slotA = slots.find((sl) => sl.id === a.slotId);
+        const slotB = slots.find((sl) => sl.id === b.slotId);
+        const dateA = slotA?.date || a.slotDate || '';
+        const dateB = slotB?.date || b.slotDate || '';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        const timeA = slotA?.startTime || a.slotStartTime || '';
+        const timeB = slotB?.startTime || b.slotStartTime || '';
+        return timeA.localeCompare(timeB);
+      });
+  }, [bookings, slots, activePartner.id]);
 
   // Group all week visible slots by date (to filter out days with no schedule)
   const allWeekSlotsByDate = useMemo(() => {
@@ -444,6 +453,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                             slot={slot}
                             booking={booking}
                             onBookSlot={onBookSlot}
+                            isPartnerView
                           />
                         );
                       })}
@@ -503,6 +513,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                     slot={slot}
                     booking={b}
                     onBookSlot={onBookSlot}
+                    isPartnerView
                   />
                 );
               })}

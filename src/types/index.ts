@@ -67,6 +67,7 @@ export interface TimeSlot {
 }
 
 export type PropertyType = 'Imóvel Individual' | 'Empreendimento';
+export type BookingOutcome = 'Aprovado' | 'Reprovado' | 'Remarcar' | 'Não compareceu';
 
 export interface Booking {
   id: string;
@@ -94,6 +95,7 @@ export interface Booking {
   additionalAttendees?: string;
   partnerNotes?: string;
   status: BookingStatus;
+  outcome?: BookingOutcome;
   autoConfirmedAt: string;
   securityCode: string;
   cancellationReason?: string;
