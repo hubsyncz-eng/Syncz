@@ -410,16 +410,17 @@ try {
 }
 
 async function persistDoc(collectionName: string, id: string, data: any) {
-  if (!db) return;
+  if (!db || !id) return;
   try {
-    await setDoc(doc(db, collectionName, id), data);
+    const cleanData = JSON.parse(JSON.stringify(data));
+    await setDoc(doc(db, collectionName, id), cleanData, { merge: true });
   } catch (err) {
     console.warn(`[Firestore] Failed to save ${collectionName}/${id}:`, err);
   }
 }
 
 async function removeDoc(collectionName: string, id: string) {
-  if (!db) return;
+  if (!db || !id) return;
   try {
     await deleteDoc(doc(db, collectionName, id));
   } catch (err) {
@@ -428,8 +429,8 @@ async function removeDoc(collectionName: string, id: string) {
 }
 
 async function loadPersistedData() {
+  initSeedData();
   if (!db) {
-    initSeedData();
     return;
   }
   try {
@@ -442,43 +443,51 @@ async function loadPersistedData() {
       getDocs(collection(db, 'activities')),
     ]);
 
+    const seedPromises: Promise<void>[] = [];
+
     if (!agSnap.empty) {
       agencies = agSnap.docs.map((d: any) => d.data() as Agency);
-    }
-    if (!ptSnap.empty) {
-      partners = ptSnap.docs.map((d: any) => d.data() as PartnerProfile);
-    }
-    if (!csSnap.empty) {
-      consultants = csSnap.docs.map((d: any) => d.data() as Consultant);
-    }
-    if (!slSnap.empty) {
-      slots = slSnap.docs.map((d: any) => d.data() as TimeSlot);
-    }
-    if (!bkSnap.empty) {
-      bookings = bkSnap.docs.map((d: any) => d.data() as Booking);
-    }
-    if (!actSnap.empty) {
-      activities = actSnap.docs.map((d: any) => d.data() as ActivityEvent);
+    } else {
+      agencies.forEach((a) => seedPromises.push(persistDoc('agencies', a.id, a)));
     }
 
-    if (agSnap.empty && ptSnap.empty) {
-      console.log('[Firestore] Empty database detected. Seeding initial baseline data to Firestore...');
-      initSeedData();
-      await Promise.all([
-        ...agencies.map((a) => persistDoc('agencies', a.id, a)),
-        ...partners.map((p) => persistDoc('partners', p.id, p)),
-        ...consultants.map((c) => persistDoc('consultants', c.id, c)),
-        ...slots.map((s) => persistDoc('slots', s.id, s)),
-        ...bookings.map((b) => persistDoc('bookings', b.id, b)),
-        ...activities.map((act) => persistDoc('activities', act.id, act)),
-      ]);
-      console.log('[Firestore] Baseline data written to Firestore.');
+    if (!ptSnap.empty) {
+      partners = ptSnap.docs.map((d: any) => d.data() as PartnerProfile);
     } else {
-      console.log(`[Firestore] Loaded: ${agencies.length} agencies, ${partners.length} partners, ${slots.length} slots, ${bookings.length} bookings.`);
+      partners.forEach((p) => seedPromises.push(persistDoc('partners', p.id, p)));
     }
+
+    if (!csSnap.empty) {
+      consultants = csSnap.docs.map((d: any) => d.data() as Consultant);
+    } else {
+      consultants.forEach((c) => seedPromises.push(persistDoc('consultants', c.id, c)));
+    }
+
+    if (!slSnap.empty) {
+      slots = slSnap.docs.map((d: any) => d.data() as TimeSlot);
+    } else {
+      slots.forEach((s) => seedPromises.push(persistDoc('slots', s.id, s)));
+    }
+
+    if (!bkSnap.empty) {
+      bookings = bkSnap.docs.map((d: any) => d.data() as Booking);
+    } else {
+      bookings.forEach((b) => seedPromises.push(persistDoc('bookings', b.id, b)));
+    }
+
+    if (!actSnap.empty) {
+      activities = actSnap.docs.map((d: any) => d.data() as ActivityEvent);
+    } else {
+      activities.forEach((act) => seedPromises.push(persistDoc('activities', act.id, act)));
+    }
+
+    if (seedPromises.length > 0) {
+      await Promise.all(seedPromises);
+      console.log(`[Firestore] Seeded ${seedPromises.length} missing baseline documents without overwriting existing data.`);
+    }
+    console.log(`[Firestore] Active state: ${agencies.length} agencies, ${partners.length} partners, ${slots.length} slots, ${bookings.length} bookings.`);
   } catch (err) {
     console.error('[Firestore] Error loading persisted data:', err);
-    initSeedData();
   }
 }
 

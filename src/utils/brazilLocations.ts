@@ -75,7 +75,8 @@ export async function fetchCitiesByState(uf: string): Promise<string[]> {
       `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${upperUf}/municipios?orderBy=nome`
     );
     if (!res.ok) throw new Error('Failed to fetch IBGE cities');
-    const data: Array<{ nome: string }> = await res.json();
+    const text = await res.text();
+    const data: Array<{ nome: string }> = JSON.parse(text);
     if (Array.isArray(data) && data.length > 0) {
       const names = data.map((c) => c.nome);
       citiesCache[upperUf] = names;
