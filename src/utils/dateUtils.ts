@@ -41,11 +41,9 @@ export function formatPortugueseDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   const dayShort = DAYS_OF_WEEK.find((dw) => dw.id === date.getDay())?.short || '';
-  const monthPart = date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-  });
-  return `${dayShort}, ${monthPart}`;
+  const dd = String(day).padStart(2, '0');
+  const mm = String(month).padStart(2, '0');
+  return `${dayShort} - ${dd}/${mm}/${year}`;
 }
 
 export function formatFullPortugueseDate(dateStr: string): string {

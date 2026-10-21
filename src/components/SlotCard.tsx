@@ -8,7 +8,10 @@ import {
   Trash2,
   User,
   CreditCard,
+  Building,
   Building2,
+  Home,
+  FileText,
   Banknote,
   Menu,
   CheckCircle2,
@@ -178,8 +181,14 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
       }`}
     >
-      {/* Top Header: Time, Weekday & Date + Action Icons */}
-      <div className={`flex items-center justify-between gap-2 ${isBooked && booking ? 'pb-1.5 mb-1.5 border-b border-slate-800/80' : ''}`}>
+      {/* Top Header: Time, Weekday & Date + Client Name (Desktop Col 2) + Action Icons */}
+      <div
+        className={`flex items-center justify-between gap-2 ${
+          isBooked && booking
+            ? 'md:grid md:grid-cols-3 md:gap-4 pb-1.5 mb-1.5 border-b border-slate-800/80'
+            : ''
+        }`}
+      >
         <div className="flex items-center gap-1.5 text-sm font-semibold text-white min-w-0 flex-wrap">
           <div className="flex items-center gap-2 shrink-0">
             <Clock
@@ -199,9 +208,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             />
             <span className="syncz-booking-meta-text syncz-booking-time-text text-sm font-extrabold text-white shrink-0">{slot.startTime}</span>
           </div>
-          <span className="text-slate-600 font-normal">•</span>
           <span
-            className={`syncz-booking-date-text text-sm font-semibold capitalize truncate ${
+            className={`syncz-booking-date-text text-sm font-semibold truncate ${
               !isBooked
                 ? 'text-slate-400'
                 : booking?.outcome === 'Reprovado'
@@ -215,9 +223,22 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                         : 'text-slate-400'
             }`}
           >
-            {formatPortugueseDate(slot.date)}
+            - {formatPortugueseDate(slot.date)}
           </span>
         </div>
+
+        {/* Desktop Column 2: Client Name in Bold aligned with Column 2 below */}
+        {isBooked && booking && (
+          <div
+            className="hidden md:flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
+            title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+          >
+            <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
+              {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+            </span>
+          </div>
+        )}
 
         {/* Action icons in top right for available slots */}
         {!isBooked && (
@@ -260,9 +281,43 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           </div>
         )}
 
-        {/* Top-right single outcome icon (clickable for Agency, visible for Partner) */}
+        {/* Top-right icons: Property Type, Note (if present), and Outcome Status */}
         {isBooked && booking && (
-          <div className="flex items-center gap-1.5 shrink-0 relative" ref={menuRef}>
+          <div className="flex items-center justify-end gap-1.5 shrink-0 relative" ref={menuRef}>
+            {/* Ícone de Imóvel Residencial / Individual ou Empreendimento */}
+            <span
+              className={
+                currentOutcomeConfig
+                  ? `p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
+                  : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+              }
+              title={
+                booking.propertyType === 'Empreendimento'
+                  ? 'Empreendimento'
+                  : 'Imóvel Individual'
+              }
+            >
+              {booking.propertyType === 'Empreendimento' ? (
+                <Building className="w-4 h-4 shrink-0" />
+              ) : (
+                <Home className="w-4 h-4 shrink-0" />
+              )}
+            </span>
+
+            {/* Ícone de Nota (quando houver nota digitada) */}
+            {Boolean(booking.partnerNotes && booking.partnerNotes.trim()) && (
+              <span
+                className={
+                  currentOutcomeConfig
+                    ? `p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
+                    : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                }
+                title={`Nota: ${booking.partnerNotes!.trim()}`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+              </span>
+            )}
+
             {activeRole !== 'agency' && currentOutcomeConfig && OutcomeBadgeIcon && (
               <span
                 className={`p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`}
@@ -336,24 +391,21 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         )}
       </div>
 
-      {/* Card Content for Booked Slot: Ícones ao lado do Nome do Cliente, CPF, Parceiro e Fidelização */}
+      {/* Card Content for Booked Slot: Linha de baixo com Parceiro, CPF e Fidelização */}
       {isBooked && booking && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 md:gap-4 text-sm">
+          {/* Mobile-only Client Name */}
           <div
-            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+            className="md:hidden syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
             title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
           >
             <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+            <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
               {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
             </span>
           </div>
 
-          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
-            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
-          </div>
-
+          {/* 1ª Coluna: Parceiro */}
           <div
             className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
             title={formatTitleCase(booking.partnerName)}
@@ -364,24 +416,29 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             </span>
           </div>
 
-          {(booking.fidelizacaoValor || booking.fidelizacaoResponsavel || booking.isConstrutora) && (
-            <div
-              className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate md:col-span-3"
-              title={`Fidelização: R$ ${booking.fidelizacaoValor || '0,00'}${
-                booking.fidelizacaoResponsavel || (booking.isConstrutora ? 'Construtora' : '')
-                  ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
-                  : ''
-              }`}
-            >
-              <Banknote className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
-              <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
-                R$ {booking.fidelizacaoValor || '0,00'}
-                {booking.fidelizacaoResponsavel || booking.isConstrutora
-                  ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
-                  : ''}
-              </span>
-            </div>
-          )}
+          {/* 2ª Coluna: CPF */}
+          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
+            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
+          </div>
+
+          {/* 3ª Coluna: Fidelização */}
+          <div
+            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+            title={`Fidelização: R$ ${booking.fidelizacaoValor || '0,00'}${
+              booking.fidelizacaoResponsavel || (booking.isConstrutora ? 'Construtora' : '')
+                ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
+                : ''
+            }`}
+          >
+            <Banknote className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+              R$ {booking.fidelizacaoValor || '0,00'}
+              {booking.fidelizacaoResponsavel || booking.isConstrutora
+                ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
+                : ''}
+            </span>
+          </div>
         </div>
       )}
     </div>
