@@ -39,7 +39,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-aprovado bg-blue-600/30 text-blue-300 border-blue-400/70 hover:bg-blue-600/45',
     cardClass:
-      'syncz-slot-outcome-aprovado bg-slate-900/90 border-blue-400/75 shadow-sm hover:border-blue-300 cursor-pointer',
+      'syncz-slot-outcome-aprovado bg-blue-950/30 border-blue-400/45 shadow-sm hover:border-blue-400 cursor-pointer',
     itemActiveClass: 'bg-blue-600/30 text-blue-300 border-blue-400/60',
   },
   {
@@ -49,7 +49,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-reprovado bg-rose-500/20 text-rose-300 border-rose-500/45 hover:bg-rose-500/30',
     cardClass:
-      'syncz-slot-outcome-reprovado bg-slate-900/90 border-rose-500/45 shadow-sm hover:border-rose-400 cursor-pointer',
+      'syncz-slot-outcome-reprovado bg-rose-950/30 border-rose-400/45 shadow-sm hover:border-rose-400 cursor-pointer',
     itemActiveClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
   },
   {
@@ -59,7 +59,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-remarcar bg-amber-500/20 text-amber-300 border-amber-500/45 hover:bg-amber-500/30',
     cardClass:
-      'syncz-slot-outcome-remarcar bg-slate-900/90 border-amber-500/45 shadow-sm hover:border-amber-400 cursor-pointer',
+      'syncz-slot-outcome-remarcar bg-amber-950/30 border-amber-400/45 shadow-sm hover:border-amber-400 cursor-pointer',
     itemActiveClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
   },
   {
@@ -69,7 +69,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-nao-compareceu bg-orange-500/20 text-orange-300 border-orange-500/45 hover:bg-orange-500/30',
     cardClass:
-      'syncz-slot-outcome-nao-compareceu bg-slate-900/90 border-orange-500/45 shadow-sm hover:border-orange-400 cursor-pointer',
+      'syncz-slot-outcome-nao-compareceu bg-orange-950/30 border-orange-400/45 shadow-sm hover:border-orange-400 cursor-pointer',
     itemActiveClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
   },
 ];
@@ -341,9 +341,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
       {/* Card Content for Booked Slot: Ícones ao lado do Nome do Cliente, CPF e Parceiro */}
       {isBooked && booking && (
-        <div className="space-y-1.5 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 md:gap-4 text-sm">
           <div
-            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm truncate"
+            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
             title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
           >
             <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
@@ -352,13 +352,13 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             </span>
           </div>
 
-          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm">
+          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
             <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white">{booking.clientCpf || 'Não informado'}</span>
+            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
           </div>
 
           <div
-            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm truncate"
+            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
             title={formatTitleCase(booking.partnerName)}
           >
             <Building2 className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
