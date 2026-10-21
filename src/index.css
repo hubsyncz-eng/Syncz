@@ -795,8 +795,8 @@ html.light-mode header .syncz-agency-menu button:hover {
 
 /* 17. Outcome Card Subtle Background, Light-Toned Border & Icon Styling */
 .syncz-slot-card.syncz-slot-outcome-aprovado {
-  background-color: rgba(30, 58, 138, 0.25) !important;
-  border-color: rgba(96, 165, 250, 0.45) !important;
+  background-color: rgba(0, 168, 255, 0.14) !important;
+  border-color: rgba(0, 168, 255, 0.48) !important;
 }
 
 .syncz-slot-card.syncz-slot-outcome-reprovado {
@@ -815,17 +815,17 @@ html.light-mode header .syncz-agency-menu button:hover {
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-aprovado {
-  background: #eff6ff !important;
-  background-color: #eff6ff !important;
-  border-color: #93c5fd !important;
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.06) !important;
+  background: #eaf8ff !important;
+  background-color: #eaf8ff !important;
+  border-color: rgba(0, 168, 255, 0.5) !important;
+  box-shadow: 0 3px 10px rgba(0, 168, 255, 0.08) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-aprovado:hover {
-  background: #e8f1ff !important;
-  background-color: #e8f1ff !important;
-  border-color: #60a5fa !important;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12) !important;
+  background: #ddf3ff !important;
+  background-color: #ddf3ff !important;
+  border-color: #00a8ff !important;
+  box-shadow: 0 4px 14px rgba(0, 168, 255, 0.14) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-reprovado {
@@ -872,26 +872,26 @@ html.light-mode .syncz-slot-card.syncz-slot-outcome-nao-compareceu:hover {
 
 .syncz-outcome-icon-aprovado,
 .syncz-outcome-icon-aprovado * {
-  background-color: rgba(37, 99, 235, 0.35) !important;
-  border-color: #3b82f6 !important;
-  color: #60a5fa !important;
+  background-color: rgba(0, 168, 255, 0.2) !important;
+  border-color: #00a8ff !important;
+  color: #00a8ff !important;
 }
 
 html.light-mode .syncz-outcome-icon-aprovado,
 html.light-mode .syncz-outcome-icon-aprovado * {
-  background-color: #93c5fd !important;
-  border-color: #2563eb !important;
-  color: #1d4ed8 !important;
+  background-color: rgba(0, 168, 255, 0.16) !important;
+  border-color: #00a8ff !important;
+  color: #00a8ff !important;
 }
 
 .syncz-slot-outcome-aprovado .syncz-booking-meta-icon,
 .syncz-slot-outcome-aprovado .syncz-booking-date-text {
-  color: #3b82f6 !important;
+  color: #00a8ff !important;
 }
 
 html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-meta-icon,
 html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-date-text {
-  color: #1d4ed8 !important;
+  color: #00a8ff !important;
 }
 
 html.light-mode .syncz-outcome-icon-reprovado,

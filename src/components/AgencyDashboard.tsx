@@ -824,7 +824,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                 : 'Nenhum horário aberto para esta semana.'}
             </div>
           ) : (
-            <div className="space-y-3 w-full">
+            <div className="space-y-4 w-full">
               {activeWeekDays.map((wd) => {
                 if (effectiveDayFilter && effectiveDayFilter !== wd.dateStr) {
                   return null;
@@ -834,14 +834,14 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                 if (daySlots.length === 0) return null;
 
                 return (
-                  <div key={wd.dateStr} className="space-y-1.5 w-full">
+                  <div key={wd.dateStr} className="space-y-2 w-full">
                     {/* Day Header Directly on Background */}
                     <div className="font-bold text-base text-white px-0.5">
                       {wd.label}, {formatNumericDate(wd.dateStr)}
                     </div>
 
                     {/* Day Slots List Directly on Background */}
-                    <div className="grid grid-cols-1 gap-1.5 w-full">
+                    <div className="grid grid-cols-1 gap-2.5 w-full">
                       {daySlots.map((slot) => {
                         const booking = slot.bookingId
                           ? bookings.find((b) => b.id === slot.bookingId)
@@ -878,7 +878,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-1.5 w-full">
+            <div className="grid grid-cols-1 gap-2.5 w-full">
               {filteredBookings.map((b) => {
                 const slot = slots.find((s) => s.id === b.slotId) || {
                   id: b.slotId,

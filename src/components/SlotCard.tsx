@@ -41,10 +41,10 @@ const OUTCOME_OPTIONS: {
     label: 'Aprovado',
     icon: CheckCircle2,
     iconBtnClass:
-      'syncz-outcome-icon-aprovado bg-blue-600/30 text-blue-300 border-blue-400/70 hover:bg-blue-600/45',
+      'syncz-outcome-icon-aprovado bg-[#00a8ff]/20 text-[#00a8ff] border-[#00a8ff]/50 hover:bg-[#00a8ff]/30',
     cardClass:
-      'syncz-slot-outcome-aprovado bg-blue-950/30 border-blue-400/45 shadow-sm hover:border-blue-400 cursor-pointer',
-    itemActiveClass: 'bg-blue-600/30 text-blue-300 border-blue-400/60',
+      'syncz-slot-outcome-aprovado bg-[#00a8ff]/10 border-[#00a8ff]/45 shadow-sm hover:border-[#00a8ff] cursor-pointer',
+    itemActiveClass: 'bg-[#00a8ff]/20 text-[#00a8ff] border-[#00a8ff]/50',
   },
   {
     value: 'Reprovado',
@@ -198,7 +198,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   : booking?.outcome === 'Reprovado'
                     ? 'text-rose-400'
                     : booking?.outcome === 'Aprovado'
-                      ? 'text-blue-400'
+                      ? 'text-[#00a8ff]'
                       : booking?.outcome === 'Remarcar'
                         ? 'text-amber-400'
                         : booking?.outcome === 'Não compareceu'
@@ -215,7 +215,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 : booking?.outcome === 'Reprovado'
                   ? 'text-rose-400'
                   : booking?.outcome === 'Aprovado'
-                    ? 'text-blue-400'
+                    ? 'text-[#00a8ff]'
                     : booking?.outcome === 'Remarcar'
                       ? 'text-amber-400'
                       : booking?.outcome === 'Não compareceu'
