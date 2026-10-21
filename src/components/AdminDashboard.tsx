@@ -394,7 +394,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {partners.map((partner) => {
+                {[...partners]
+                  .sort((a, b) =>
+                    (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+                  )
+                  .map((partner) => {
                   return (
                     <div
                       key={partner.id}

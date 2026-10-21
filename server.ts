@@ -479,7 +479,7 @@ app.delete('/api/agencies/:id', (req, res) => {
 
 // Admin or partner registers a new Partner
 app.post('/api/partners', (req, res) => {
-  const { name, segment, representative, email, phone, cnpj, password } = req.body;
+  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds } = req.body;
 
   if (!name || !representative || !email) {
     return res.status(400).json({ error: 'Preencha os campos obrigatórios do parceiro.' });
@@ -496,6 +496,7 @@ app.post('/api/partners', (req, res) => {
     cnpj: cnpj || '',
     badgeColor: colors[Math.floor(Math.random() * colors.length)],
     password: password || 'parceiro123',
+    allowedAgencyIds: Array.isArray(allowedAgencyIds) ? allowedAgencyIds : [],
     createdAt: new Date().toISOString(),
   };
 
@@ -524,7 +525,7 @@ app.post('/api/partners', (req, res) => {
 // Admin or partner updates an existing Partner
 app.put('/api/partners/:id', (req, res) => {
   const { id } = req.params;
-  const { name, segment, representative, email, phone, cnpj, password } = req.body;
+  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds } = req.body;
 
   const idx = partners.findIndex((p) => p.id === id);
   if (idx === -1) {
@@ -544,6 +545,9 @@ app.put('/api/partners/:id', (req, res) => {
     phone: phone !== undefined ? phone.trim() : partners[idx].phone,
     cnpj: cnpj.trim(),
     password: password || partners[idx].password || 'parceiro123',
+    allowedAgencyIds: Array.isArray(allowedAgencyIds)
+      ? allowedAgencyIds
+      : partners[idx].allowedAgencyIds || [],
   };
 
   partners[idx] = updatedPartner;

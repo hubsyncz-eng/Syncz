@@ -84,16 +84,15 @@ html.dark-mode .min-h-screen.bg-slate-950 {
    ============================================================================ */
 html.light-mode,
 html.light-mode body {
-  background-color: #f4f7fb;
+  background-color: #FFFFFF !important;
   color: #0f172a;
   color-scheme: light;
 }
 
 /* 1. Root & Main Layout Surfaces */
 html.light-mode .min-h-screen.bg-slate-950 {
-  background: radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.10), transparent 42%),
-              radial-gradient(circle at 85% 10%, rgba(99, 102, 241, 0.10), transparent 42%),
-              #f4f7fb !important;
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
   color: #0f172a !important;
 }
 
@@ -173,25 +172,32 @@ html.light-mode .syncz-slot-card {
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.07) !important;
 }
 
-html.light-mode .syncz-slot-available {
-  border-color: #38bdf8 !important;
+.syncz-slot-available,
+.syncz-slot-booked-partner {
+  border-color: #334155 !important;
 }
 
-html.light-mode .syncz-slot-available:hover {
-  border-color: #0284c7 !important;
-  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.18) !important;
+.syncz-slot-available:hover,
+.syncz-slot-booked-partner:hover {
+  border-color: #64748b !important;
 }
 
+html.light-mode .syncz-slot-available,
 html.light-mode .syncz-slot-booked-partner,
+html.light-mode .syncz-slot-booked,
 html.light-mode .syncz-booking-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f5f7ff 100%) !important;
-  border-color: #6366f1 !important;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.12) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
 }
 
-html.light-mode .syncz-slot-booked {
+html.light-mode .syncz-slot-available:hover,
+html.light-mode .syncz-slot-booked-partner:hover,
+html.light-mode .syncz-booking-card:hover {
+  background: #ffffff !important;
   background-color: #ffffff !important;
-  border-color: #60a5fa !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
 }
 
 html.light-mode .syncz-slot-locked {
@@ -601,12 +607,16 @@ html.light-mode header .text-purple-300 {
   color: #818cf8 !important;
 }
 
-/* 10. Ensure Week Tag, Day Chips & Inactive View Buttons share identical Light Mode styling */
+/* 10. Ensure Agency Select, Week Tag, Day Chips & Inactive View Buttons share identical Light Mode border styling */
 html.light-mode .syncz-week-tag,
 html.light-mode .syncz-filter-chip {
   background-color: #dbeafe !important;
-  border-color: #60a5fa !important;
+  border-color: #93c5fd !important;
   color: #1e3a8a !important;
+}
+
+html.light-mode .syncz-agency-select {
+  border-color: #93c5fd !important;
 }
 
 html.light-mode .syncz-week-tag button,
@@ -619,7 +629,7 @@ html.light-mode .syncz-filter-chip * {
 html.light-mode .syncz-week-tag button:hover,
 html.light-mode .syncz-filter-chip:hover {
   background-color: #bfdbfe !important;
-  border-color: #2563eb !important;
+  border-color: #60a5fa !important;
   color: #1e40af !important;
 }
 
@@ -642,25 +652,25 @@ html.light-mode .syncz-booking-time-text {
 }
 
 .syncz-booking-meta-icon {
-  color: #22d3ee !important;
+  color: #94a3b8 !important;
   width: 1rem !important;
   height: 1rem !important;
 }
 
 html.light-mode .syncz-booking-meta-icon {
-  color: #0284c7 !important;
+  color: #64748b !important;
   width: 1rem !important;
   height: 1rem !important;
 }
 
-/* 12. Lighter Booked Cards in Light Mode (Clean White/Sky Surface & Soft Borders) */
+/* 12. Unmarked Booked Cards in Light Mode (White Surface & Gray Borders matching Available Slots) */
 html.light-mode .syncz-slot-booked-partner,
 html.light-mode .syncz-slot-booked,
 html.light-mode .syncz-booking-card {
-  background: #f8fbff !important;
-  background-color: #f8fbff !important;
-  border-color: #93c5fd !important;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.06) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.07) !important;
   --tw-ring-shadow: 0 0 #0000 !important;
   --tw-ring-color: transparent !important;
 }
@@ -668,8 +678,9 @@ html.light-mode .syncz-booking-card {
 html.light-mode .syncz-slot-booked-partner:hover,
 html.light-mode .syncz-booking-card:hover {
   background: #ffffff !important;
-  border-color: #38bdf8 !important;
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.12) !important;
+  background-color: #ffffff !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
 }
 
 html.light-mode .syncz-slot-edit-btn,
@@ -782,64 +793,89 @@ html.light-mode header .syncz-agency-menu button:hover {
   background-color: #eff6ff !important;
 }
 
-/* 17. Subtle Card Coloring & Outcome Icon Styling by Selected Option */
+/* 17. Outcome Card Border & Icon Styling (White Card Background in Light Mode) */
+.syncz-slot-card.syncz-slot-outcome-aprovado {
+  border-color: #3b82f6 !important;
+}
+
 html.light-mode .syncz-slot-card.syncz-slot-outcome-aprovado {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
-  background-color: #f0fdf4 !important;
-  border-color: #86efac !important;
-  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.08) !important;
-  --tw-ring-color: rgba(34, 197, 94, 0.2) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.08) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-aprovado:hover {
-  border-color: #4ade80 !important;
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.14) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.14) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-reprovado {
-  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%) !important;
-  background-color: #fff1f2 !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: #fda4af !important;
   box-shadow: 0 3px 10px rgba(225, 29, 72, 0.08) !important;
-  --tw-ring-color: rgba(244, 63, 94, 0.2) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-reprovado:hover {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: #fb7185 !important;
   box-shadow: 0 4px 14px rgba(225, 29, 72, 0.14) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-remarcar {
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
-  background-color: #fffbeb !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: #fcd34d !important;
   box-shadow: 0 3px 10px rgba(217, 119, 6, 0.08) !important;
-  --tw-ring-color: rgba(245, 158, 11, 0.2) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-remarcar:hover {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: #fbbf24 !important;
   box-shadow: 0 4px 14px rgba(217, 119, 6, 0.14) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-nao-compareceu {
-  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
-  background-color: #fff7ed !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: #fdba74 !important;
   box-shadow: 0 3px 10px rgba(234, 88, 12, 0.08) !important;
-  --tw-ring-color: rgba(249, 115, 22, 0.2) !important;
 }
 
 html.light-mode .syncz-slot-card.syncz-slot-outcome-nao-compareceu:hover {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
   border-color: #fb923c !important;
   box-shadow: 0 4px 14px rgba(234, 88, 12, 0.14) !important;
 }
 
+.syncz-outcome-icon-aprovado,
+.syncz-outcome-icon-aprovado * {
+  background-color: rgba(37, 99, 235, 0.35) !important;
+  border-color: #3b82f6 !important;
+  color: #60a5fa !important;
+}
+
 html.light-mode .syncz-outcome-icon-aprovado,
 html.light-mode .syncz-outcome-icon-aprovado * {
-  background-color: #dcfce7 !important;
-  border-color: #4ade80 !important;
-  color: #15803d !important;
+  background-color: #93c5fd !important;
+  border-color: #2563eb !important;
+  color: #1d4ed8 !important;
+}
+
+.syncz-slot-outcome-aprovado .syncz-booking-meta-icon,
+.syncz-slot-outcome-aprovado .syncz-booking-date-text {
+  color: #3b82f6 !important;
+}
+
+html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-meta-icon,
+html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-date-text {
+  color: #1d4ed8 !important;
 }
 
 html.light-mode .syncz-outcome-icon-reprovado,
@@ -849,10 +885,30 @@ html.light-mode .syncz-outcome-icon-reprovado * {
   color: #be123c !important;
 }
 
+.syncz-slot-outcome-reprovado .syncz-booking-meta-icon,
+.syncz-slot-outcome-reprovado .syncz-booking-date-text {
+  color: #f87171 !important;
+}
+
+html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-meta-icon,
+html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-date-text {
+  color: #e11d48 !important;
+}
+
 html.light-mode .syncz-outcome-icon-remarcar,
 html.light-mode .syncz-outcome-icon-remarcar * {
   background-color: #fef3c7 !important;
   border-color: #fbbf24 !important;
+  color: #b45309 !important;
+}
+
+.syncz-slot-outcome-remarcar .syncz-booking-meta-icon,
+.syncz-slot-outcome-remarcar .syncz-booking-date-text {
+  color: #fbbf24 !important;
+}
+
+html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-meta-icon,
+html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-date-text {
   color: #b45309 !important;
 }
 
@@ -863,7 +919,56 @@ html.light-mode .syncz-outcome-icon-nao-compareceu * {
   color: #c2410c !important;
 }
 
-/* 18. Disabled Slot Cards for Past Days & Current Day in Partner View */
+.syncz-slot-outcome-nao-compareceu .syncz-booking-meta-icon,
+.syncz-slot-outcome-nao-compareceu .syncz-booking-date-text {
+  color: #fb923c !important;
+}
+
+html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-meta-icon,
+html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-date-text {
+  color: #c2410c !important;
+}
+
+/* 18. Disabled Slot Cards & Available / Unmarked Booked Slot Gray Styling */
+.syncz-slot-available .syncz-booking-meta-icon,
+.syncz-slot-available .syncz-booking-date-text,
+.syncz-slot-booked-partner .syncz-booking-meta-icon,
+.syncz-slot-booked-partner .syncz-booking-date-text {
+  color: #94a3b8 !important;
+}
+
+html.light-mode .syncz-slot-available .syncz-booking-meta-icon,
+html.light-mode .syncz-slot-available .syncz-booking-date-text,
+html.light-mode .syncz-slot-booked-partner .syncz-booking-meta-icon,
+html.light-mode .syncz-slot-booked-partner .syncz-booking-date-text {
+  color: #64748b !important;
+}
+
+.syncz-available-icon-btn,
+.syncz-available-icon-btn * {
+  color: #94a3b8 !important;
+}
+
+html.light-mode .syncz-available-icon-btn {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+html.light-mode .syncz-available-icon-btn * {
+  color: #64748b !important;
+}
+
+html.light-mode .syncz-available-icon-btn:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #475569 !important;
+}
+
+html.light-mode .syncz-available-icon-btn:hover * {
+  color: #475569 !important;
+}
+
 html.light-mode .syncz-slot-card.syncz-slot-disabled {
   background-color: #f1f5f9 !important;
   border-color: #cbd5e1 !important;

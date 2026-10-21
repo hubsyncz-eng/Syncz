@@ -56,7 +56,18 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     registerConsultant,
     updateConsultant,
     deleteConsultant,
+    togglePartnerAgencyAccess,
   } = useRealtime();
+
+  const activeAgencyId = useMemo(() => {
+    return currentAgency?.id || currentUser?.agencyId || agencies[0]?.id || 'ag_1';
+  }, [currentAgency, currentUser, agencies]);
+
+  const sortedPartners = useMemo(() => {
+    return [...partners].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+    );
+  }, [partners]);
 
   // Agency display name matching partner greeting style
   const agencyDisplayName = useMemo(() => {
@@ -210,10 +221,17 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
   const weekDateSet = useMemo(() => new Set(weekDays.map((w) => w.dateStr)), [weekDays]);
 
+  const todayIso = formatDateToISO(new Date());
+
   // All visible slots for this week (before day filter)
+  // Do not show available slots from past days, only bookings
   const weekVisibleSlots = useMemo(() => {
-    return slots.filter((slot) => weekDateSet.has(slot.date));
-  }, [slots, weekDateSet]);
+    return slots.filter((slot) => {
+      if (!weekDateSet.has(slot.date)) return false;
+      if (slot.status === 'available' && slot.date < todayIso) return false;
+      return true;
+    });
+  }, [slots, weekDateSet, todayIso]);
 
   // Effective day filter (either from Hoje/daily mode or day chip click)
   const effectiveDayFilter = isTodayMode ? targetDayDate.dateStr : selectedDayFilter;
@@ -370,53 +388,38 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {partners.map((partner) => (
-              <div
-                key={partner.id}
-                onClick={() => setEditingPartner(partner)}
-                className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-5 flex flex-col justify-between shadow-lg transition-all cursor-pointer group"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={`w-3 h-3 rounded-full shrink-0 ${partner.badgeColor}`} />
-                      <h4 className="font-bold text-white text-base sm:text-lg leading-snug truncate group-hover:text-emerald-300 transition-colors">
-                        {partner.name}
-                      </h4>
-                    </div>
+          <div className="flex flex-col gap-2.5">
+            {sortedPartners.map((partner) => {
+              const isAllowed =
+                Array.isArray(partner.allowedAgencyIds) &&
+                partner.allowedAgencyIds.includes(activeAgencyId);
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentPartner(partner);
-                        setInspectingPartner(partner);
-                      }}
-                      title="Ver como Parceiro"
-                      className="p-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition-colors cursor-pointer shrink-0"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="pt-3.5 space-y-2 text-xs text-slate-400">
-                    <div className="flex justify-between items-center gap-2">
-                      <span>CNPJ:</span>
-                      <span className="font-mono text-slate-200 font-semibold">{partner.cnpj || '-'}</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <span>E-mail:</span>
-                      <span className="text-slate-300 truncate">{partner.email || '-'}</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <span>Telefone:</span>
-                      <span className="text-slate-300">{partner.phone || '-'}</span>
-                    </div>
+              return (
+                <div
+                  key={partner.id}
+                  onClick={() => setEditingPartner(partner)}
+                  className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isAllowed}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => togglePartnerAgencyAccess(partner.id, activeAgencyId)}
+                      title={
+                        isAllowed
+                          ? 'Parceiro habilitado para agendar nesta agência'
+                          : 'Marque para permitir que este parceiro faça agendamentos nesta agência'
+                      }
+                      className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
+                    />
+                    <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-emerald-300 transition-colors">
+                      {partner.name}
+                    </h4>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {isNewPartnerModalOpen && (
@@ -659,7 +662,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           <button
             type="button"
             onClick={onOpenBatchModal}
-            className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white shadow-md shadow-cyan-500/25"
+            className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer border border-cyan-300/70 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white shadow-md shadow-cyan-500/25"
           >
             <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span className="truncate">Horários em Lote</span>
@@ -668,7 +671,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           <button
             type="button"
             onClick={onOpenSingleSlotModal}
-            className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer syncz-filter-chip bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700"
+            className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer syncz-filter-chip bg-slate-950 border border-cyan-500/45 text-slate-300 hover:text-white hover:border-cyan-400"
           >
             <PlusCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-cyan-400" />
             <span className="truncate">Horário Avulso</span>
@@ -678,7 +681,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         {/* Week Tag + Day Filter Chips (Side by side on desktop) */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 flex-wrap">
           {/* Week Tag */}
-          <div className="syncz-week-tag inline-flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 w-full sm:w-auto justify-between sm:justify-start shrink-0">
+          <div className="syncz-week-tag inline-flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-cyan-500/45 w-full sm:w-auto justify-between sm:justify-start shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -766,10 +769,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                     setActiveTab('calendar');
                   }
                 }}
-                className={`px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all cursor-pointer ${
+                className={`px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all cursor-pointer border ${
                   effectiveDayFilter === wd.dateStr
-                    ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-sm'
-                    : 'syncz-filter-chip bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white border-cyan-300/70 shadow-sm'
+                    : 'syncz-filter-chip bg-slate-950 border-cyan-500/45 text-slate-300 hover:text-white hover:border-cyan-400'
                 }`}
               >
                 {wd.short}
@@ -783,10 +786,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('calendar')}
-            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer border ${
               activeTab === 'calendar'
-                ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-md shadow-cyan-500/25'
-                : 'syncz-filter-chip bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white border-cyan-300/70 shadow-md shadow-cyan-500/25'
+                : 'syncz-filter-chip bg-slate-950 border-cyan-500/45 text-slate-300 hover:text-white hover:border-cyan-400'
             }`}
           >
             <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -798,10 +801,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('bookings')}
-            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-xs font-semibold transition-all cursor-pointer border ${
               activeTab === 'bookings'
-                ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white shadow-md shadow-indigo-500/25'
-                : 'syncz-filter-chip bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'
+                ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white border-cyan-300/70 shadow-md shadow-indigo-500/25'
+                : 'syncz-filter-chip bg-slate-950 border-cyan-500/45 text-slate-300 hover:text-white hover:border-cyan-400'
             }`}
           >
             <CalendarCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -821,7 +824,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                 : 'Nenhum horário aberto para esta semana.'}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 w-full">
+            <div className="space-y-3 w-full">
               {activeWeekDays.map((wd) => {
                 if (effectiveDayFilter && effectiveDayFilter !== wd.dateStr) {
                   return null;
@@ -830,25 +833,15 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                 const daySlots = slotsByDate.get(wd.dateStr) || [];
                 if (daySlots.length === 0) return null;
 
-                const availableInDay = daySlots.filter((s) => s.status === 'available').length;
-
                 return (
-                  <div
-                    key={wd.dateStr}
-                    className="syncz-day-column bg-slate-900/80 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-col w-full"
-                  >
-                    {/* Day Column Header */}
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <div className="font-bold text-base text-white">
-                        {wd.label}, {formatNumericDate(wd.dateStr)}
-                      </div>
-                      <span className="syncz-badge-available shrink-0 inline-flex items-center justify-center text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                        {availableInDay} livre{availableInDay === 1 ? '' : 's'}
-                      </span>
+                  <div key={wd.dateStr} className="space-y-1.5 w-full">
+                    {/* Day Header Directly on Background */}
+                    <div className="font-bold text-base text-white px-0.5">
+                      {wd.label}, {formatNumericDate(wd.dateStr)}
                     </div>
 
-                    {/* Day Slots List */}
-                    <div className="space-y-2.5">
+                    {/* Day Slots List Directly on Background */}
+                    <div className="grid grid-cols-1 gap-1.5 w-full">
                       {daySlots.map((slot) => {
                         const booking = slot.bookingId
                           ? bookings.find((b) => b.id === slot.bookingId)
@@ -874,7 +867,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
       {/* TAB 2: CONFIRMED BOOKINGS */}
       {activeTab === 'bookings' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Bookings Table / Cards */}
           {filteredBookings.length === 0 ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
@@ -885,7 +878,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 w-full">
+            <div className="grid grid-cols-1 gap-1.5 w-full">
               {filteredBookings.map((b) => {
                 const slot = slots.find((s) => s.id === b.slotId) || {
                   id: b.slotId,

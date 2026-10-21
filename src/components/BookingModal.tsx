@@ -344,11 +344,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   <option value="" disabled>
                     Selecione um parceiro cadastrado...
                   </option>
-                  {partners.map((partner) => (
-                    <option key={partner.id} value={partner.id}>
-                      {partner.name}
-                    </option>
-                  ))}
+                  {[...partners]
+                    .filter((partner) => {
+                      if (existingBooking && partner.id === existingBooking.partnerId) return true;
+                      const allowed = Array.isArray(partner.allowedAgencyIds)
+                        ? partner.allowedAgencyIds
+                        : [];
+                      return allowed.includes(slot.agencyId);
+                    })
+                    .sort((a, b) =>
+                      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+                    )
+                    .map((partner) => (
+                      <option key={partner.id} value={partner.id}>
+                        {partner.name}
+                      </option>
+                    ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
               </div>

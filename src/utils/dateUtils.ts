@@ -1,11 +1,11 @@
 export const DAYS_OF_WEEK = [
-  { id: 1, name: 'Seg', short: 'Seg' },
-  { id: 2, name: 'Ter', short: 'Ter' },
-  { id: 3, name: 'Qua', short: 'Qua' },
-  { id: 4, name: 'Qui', short: 'Qui' },
-  { id: 5, name: 'Sex', short: 'Sex' },
-  { id: 6, name: 'Sáb', short: 'Sáb' },
-  { id: 0, name: 'Dom', short: 'Dom' },
+  { id: 1, name: 'Segunda-Feira', short: 'Seg' },
+  { id: 2, name: 'Terça-Feira', short: 'Ter' },
+  { id: 3, name: 'Quarta-Feira', short: 'Qua' },
+  { id: 4, name: 'Quinta-Feira', short: 'Qui' },
+  { id: 5, name: 'Sexta-Feira', short: 'Sex' },
+  { id: 6, name: 'Sábado', short: 'Sáb' },
+  { id: 0, name: 'Domingo', short: 'Dom' },
 ];
 
 export function getMonday(d: Date): Date {

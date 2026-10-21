@@ -78,6 +78,7 @@ interface RealtimeContextValue {
   deleteAgency: (id: string) => Promise<boolean>;
   registerPartner: (data: Partial<PartnerProfile>) => Promise<PartnerProfile>;
   updatePartner: (id: string, data: Partial<PartnerProfile>) => Promise<PartnerProfile>;
+  togglePartnerAgencyAccess: (partnerId: string, agencyId: string) => Promise<void>;
   deletePartner: (id: string) => Promise<boolean>;
   registerConsultant: (data: Partial<Consultant>) => Promise<Consultant>;
   updateConsultant: (id: string, data: Partial<Consultant>) => Promise<Consultant>;
@@ -1016,8 +1017,13 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         cnpj: data.cnpj || '',
         badgeColor: colors[Math.floor(Math.random() * colors.length)],
         password: data.password || 'parceiro123',
+        allowedAgencyIds: Array.isArray(data.allowedAgencyIds) ? data.allowedAgencyIds : [],
         createdAt: new Date().toISOString(),
       };
+    }
+
+    if (Array.isArray(data.allowedAgencyIds) && !Array.isArray(createdPartner.allowedAgencyIds)) {
+      createdPartner.allowedAgencyIds = data.allowedAgencyIds;
     }
 
     await persistToFirestore('partners', createdPartner.id, createdPartner);
@@ -1045,7 +1051,14 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let updatedPartner: PartnerProfile;
 
     if (apiRes.isApiAvailable && apiRes.ok && apiRes.data) {
-      updatedPartner = apiRes.data;
+      updatedPartner = {
+        ...apiRes.data,
+        allowedAgencyIds: Array.isArray(data.allowedAgencyIds)
+          ? data.allowedAgencyIds
+          : Array.isArray(apiRes.data.allowedAgencyIds)
+            ? apiRes.data.allowedAgencyIds
+            : existing?.allowedAgencyIds || [],
+      };
     } else {
       if (!existing) throw new Error('Parceiro não encontrado.');
       if (!data.name || !data.email || !data.cnpj) {
@@ -1060,6 +1073,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         phone: data.phone !== undefined ? data.phone.trim() : existing.phone,
         cnpj: data.cnpj.trim(),
         password: data.password || existing.password || 'parceiro123',
+        allowedAgencyIds: Array.isArray(data.allowedAgencyIds)
+          ? data.allowedAgencyIds
+          : existing.allowedAgencyIds || [],
       };
     }
 
@@ -1111,6 +1127,32 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       message: `Os dados de ${updatedPartner.name} foram salvos com sucesso.`,
     });
     return updatedPartner;
+  };
+
+  const togglePartnerAgencyAccess = async (partnerId: string, agencyId: string): Promise<void> => {
+    const existing = partners.find((p) => p.id === partnerId);
+    if (!existing || !agencyId) return;
+
+    const currentIds = Array.isArray(existing.allowedAgencyIds) ? existing.allowedAgencyIds : [];
+    const isCurrentlyAllowed = currentIds.includes(agencyId);
+    const nextAllowedIds = isCurrentlyAllowed
+      ? currentIds.filter((id) => id !== agencyId)
+      : [...currentIds, agencyId];
+
+    const updatedPartner: PartnerProfile = {
+      ...existing,
+      allowedAgencyIds: nextAllowedIds,
+    };
+
+    setPartners((prev) => prev.map((p) => (p.id === partnerId ? updatedPartner : p)));
+    setCurrentPartner((prev) => (prev && prev.id === partnerId ? updatedPartner : prev));
+
+    await safeFetchJson(`/api/partners/${partnerId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedPartner),
+    });
+    await persistToFirestore('partners', updatedPartner.id, updatedPartner);
   };
 
   const deletePartner = async (id: string): Promise<boolean> => {
@@ -1798,6 +1840,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         deleteAgency,
         registerPartner,
         updatePartner,
+        togglePartnerAgencyAccess,
         deletePartner,
         registerConsultant,
         updateConsultant,

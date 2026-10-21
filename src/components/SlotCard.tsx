@@ -37,10 +37,10 @@ const OUTCOME_OPTIONS: {
     label: 'Aprovado',
     icon: CheckCircle2,
     iconBtnClass:
-      'syncz-outcome-icon-aprovado bg-emerald-500/20 text-emerald-300 border-emerald-500/45 hover:bg-emerald-500/30',
+      'syncz-outcome-icon-aprovado bg-blue-600/30 text-blue-300 border-blue-400/70 hover:bg-blue-600/45',
     cardClass:
-      'syncz-slot-outcome-aprovado bg-emerald-950/35 border-emerald-500/45 shadow-md shadow-emerald-500/5 ring-1 ring-emerald-500/25 hover:border-emerald-400 cursor-pointer',
-    itemActiveClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+      'syncz-slot-outcome-aprovado bg-slate-900/90 border-blue-400/75 shadow-sm hover:border-blue-300 cursor-pointer',
+    itemActiveClass: 'bg-blue-600/30 text-blue-300 border-blue-400/60',
   },
   {
     value: 'Reprovado',
@@ -49,7 +49,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-reprovado bg-rose-500/20 text-rose-300 border-rose-500/45 hover:bg-rose-500/30',
     cardClass:
-      'syncz-slot-outcome-reprovado bg-rose-950/35 border-rose-500/45 shadow-md shadow-rose-500/5 ring-1 ring-rose-500/25 hover:border-rose-400 cursor-pointer',
+      'syncz-slot-outcome-reprovado bg-slate-900/90 border-rose-500/45 shadow-sm hover:border-rose-400 cursor-pointer',
     itemActiveClass: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
   },
   {
@@ -59,7 +59,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-remarcar bg-amber-500/20 text-amber-300 border-amber-500/45 hover:bg-amber-500/30',
     cardClass:
-      'syncz-slot-outcome-remarcar bg-amber-950/35 border-amber-500/45 shadow-md shadow-amber-500/5 ring-1 ring-amber-500/25 hover:border-amber-400 cursor-pointer',
+      'syncz-slot-outcome-remarcar bg-slate-900/90 border-amber-500/45 shadow-sm hover:border-amber-400 cursor-pointer',
     itemActiveClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
   },
   {
@@ -69,7 +69,7 @@ const OUTCOME_OPTIONS: {
     iconBtnClass:
       'syncz-outcome-icon-nao-compareceu bg-orange-500/20 text-orange-300 border-orange-500/45 hover:bg-orange-500/30',
     cardClass:
-      'syncz-slot-outcome-nao-compareceu bg-orange-950/35 border-orange-500/45 shadow-md shadow-orange-500/5 ring-1 ring-orange-500/25 hover:border-orange-400 cursor-pointer',
+      'syncz-slot-outcome-nao-compareceu bg-slate-900/90 border-orange-500/45 shadow-sm hover:border-orange-400 cursor-pointer',
     itemActiveClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
   },
 ];
@@ -126,10 +126,15 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const isBookedByCurrentPartner =
     isBooked && booking && booking.partnerId === activePartnerId;
 
-  // In partner view, hide other partners' bookings and locked slots completely
+  // In partner view, hide other partners' bookings, locked slots, and unbookable free slots completely
   if (activeRole === 'partner') {
     if (isBooked && !isBookedByCurrentPartner) return null;
     if (isLocked) return null;
+    if (!isBooked && slot.date <= todayIso) return null;
+  }
+
+  if (activeRole === 'agency' && !isBooked && slot.date < todayIso) {
+    return null;
   }
 
   const handleCardClick = () => {
@@ -166,21 +171,49 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         !isBooked
           ? isPartnerInclusionBlocked
             ? 'syncz-slot-disabled bg-slate-900/50 border-slate-800/80 opacity-60 cursor-not-allowed'
-            : 'syncz-slot-available bg-slate-900/90 border-cyan-500/40 hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer'
+            : 'syncz-slot-available bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
           : currentOutcomeConfig
             ? currentOutcomeConfig.cardClass
-            : 'syncz-slot-booked-partner bg-indigo-950/50 border-indigo-500/50 shadow-md shadow-indigo-500/10 ring-1 ring-indigo-500/30 hover:border-cyan-400 cursor-pointer'
+            : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
       }`}
     >
       {/* Top Header: Time, Weekday & Date + Action Icons */}
       <div className={`flex items-center justify-between gap-2 ${isBooked && booking ? 'pb-1.5 mb-1.5 border-b border-slate-800/80' : ''}`}>
         <div className="flex items-center gap-1.5 text-sm font-semibold text-white min-w-0 flex-wrap">
           <div className="flex items-center gap-2 shrink-0">
-            <Clock className="syncz-booking-meta-icon w-4 h-4 text-cyan-400 shrink-0" />
+            <Clock
+              className={`syncz-booking-meta-icon w-4 h-4 shrink-0 ${
+                !isBooked
+                  ? 'text-slate-400'
+                  : booking?.outcome === 'Reprovado'
+                    ? 'text-rose-400'
+                    : booking?.outcome === 'Aprovado'
+                      ? 'text-blue-400'
+                      : booking?.outcome === 'Remarcar'
+                        ? 'text-amber-400'
+                        : booking?.outcome === 'Não compareceu'
+                          ? 'text-orange-400'
+                          : 'text-slate-400'
+              }`}
+            />
             <span className="syncz-booking-meta-text syncz-booking-time-text text-sm font-extrabold text-white shrink-0">{slot.startTime}</span>
           </div>
           <span className="text-slate-600 font-normal">•</span>
-          <span className="text-sm font-semibold text-cyan-300 capitalize truncate">
+          <span
+            className={`syncz-booking-date-text text-sm font-semibold capitalize truncate ${
+              !isBooked
+                ? 'text-slate-400'
+                : booking?.outcome === 'Reprovado'
+                  ? 'text-rose-400'
+                  : booking?.outcome === 'Aprovado'
+                    ? 'text-blue-400'
+                    : booking?.outcome === 'Remarcar'
+                      ? 'text-amber-400'
+                      : booking?.outcome === 'Não compareceu'
+                        ? 'text-orange-400'
+                        : 'text-slate-400'
+            }`}
+          >
             {formatPortugueseDate(slot.date)}
           </span>
         </div>
@@ -199,7 +232,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               className={
                 isPartnerInclusionBlocked
                   ? 'syncz-slot-disabled-btn p-1.5 rounded-xl bg-slate-800/70 text-slate-500 border border-slate-700/70 flex items-center justify-center shrink-0 cursor-not-allowed opacity-60'
-                  : 'syncz-slot-action-btn syncz-slot-book-btn p-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-gradient-to-r hover:from-cyan-500 hover:via-blue-500 hover:to-indigo-500 hover:text-white group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:via-blue-500 group-hover:to-indigo-500 group-hover:text-white transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer'
+                  : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
               }
               title={
                 isPartnerInclusionBlocked
@@ -218,7 +251,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   deleteSlot(slot.id);
                 }}
                 title="Excluir este horário"
-                className="syncz-slot-delete-btn p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-400 border border-slate-700 transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                className="syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -254,7 +287,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   className={
                     currentOutcomeConfig
                       ? `p-1.5 rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
-                      : 'syncz-slot-action-btn syncz-slot-book-btn p-1.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-gradient-to-r hover:from-cyan-500 hover:via-blue-500 hover:to-indigo-500 hover:text-white transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer'
+                      : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
                   }
                 >
                   {OutcomeBadgeIcon ? (
@@ -309,24 +342,44 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       {/* Card Content for Booked Slot: Ícones ao lado do Nome do Cliente, CPF e Parceiro */}
       {isBooked && booking && (
         <div className="space-y-1.5 text-sm">
-          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm truncate" title={booking.clientName}>
-            <User className="syncz-booking-meta-icon w-4 h-4 text-cyan-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientName || booking.partnerRepresentative || 'Cliente Negocial'}</span>
+          <div
+            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm truncate"
+            title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+          >
+            <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+              {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+            </span>
           </div>
 
           <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm">
-            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-cyan-400 shrink-0" />
+            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
             <span className="syncz-booking-meta-text text-sm font-medium text-white">{booking.clientCpf || 'Não informado'}</span>
           </div>
 
-          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm truncate" title={booking.partnerName}>
-            <Building2 className="syncz-booking-meta-icon w-4 h-4 text-cyan-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.partnerName}</span>
+          <div
+            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm truncate"
+            title={formatTitleCase(booking.partnerName)}
+          >
+            <Building2 className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+              {formatTitleCase(booking.partnerName)}
+            </span>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+function formatTitleCase(text?: string): string {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 

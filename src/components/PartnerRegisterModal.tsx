@@ -16,7 +16,14 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
   partnerToEdit,
   canDelete: propCanDelete,
 }) => {
-  const { registerPartner, updatePartner, deletePartner, currentUser } = useRealtime();
+  const {
+    registerPartner,
+    updatePartner,
+    deletePartner,
+    currentUser,
+    currentAgency,
+    adminPerspective,
+  } = useRealtime();
   const isEditing = Boolean(partnerToEdit);
   const allowDelete = propCanDelete !== undefined ? propCanDelete : currentUser?.role !== 'partner';
 
@@ -52,8 +59,14 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
           cnpj: cnpj.trim(),
           segment: partnerToEdit.segment || 'Parceiro Negocial',
           password: password || 'parceiro123',
+          allowedAgencyIds: partnerToEdit.allowedAgencyIds,
         });
       } else {
+        const isAgencyCreator =
+          currentUser?.role === 'agency' ||
+          (currentUser?.role === 'admin' && adminPerspective === 'agency_view');
+        const activeAgencyId = currentUser?.agencyId || currentAgency?.id;
+
         const created = await registerPartner({
           name: name.trim(),
           representative: (representative.trim() || name.trim()),
@@ -62,6 +75,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
           cnpj: cnpj.trim(),
           segment: 'Parceiro Negocial',
           password: password || 'parceiro123',
+          allowedAgencyIds: isAgencyCreator && activeAgencyId ? [activeAgencyId] : [],
         });
 
         if (onPartnerCreated) {

@@ -113,6 +113,7 @@ export interface PartnerProfile {
   badgeColor: string;
   username?: string;
   password?: string;
+  allowedAgencyIds?: string[];
   createdAt?: string;
 }
 
