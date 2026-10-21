@@ -1472,19 +1472,24 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const existing = bookings.find((b) => b.id === bookingId);
     if (!existing) return;
 
+    const updatedBooking: Booking = {
+      ...existing,
+    };
+    if (outcome) {
+      updatedBooking.outcome = outcome;
+    } else {
+      delete updatedBooking.outcome;
+    }
+
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? updatedBooking : b)));
+
     await safeFetchJson(`/api/bookings/${bookingId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ outcome: outcome || '' }),
     });
 
-    const updatedBooking: Booking = {
-      ...existing,
-      outcome: outcome || undefined,
-    };
-
     await persistToFirestore('bookings', updatedBooking.id, updatedBooking);
-    setBookings((prev) => prev.map((b) => (b.id === bookingId ? updatedBooking : b)));
 
     addToast({
       type: 'info',

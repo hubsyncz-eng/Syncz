@@ -99,7 +99,7 @@ async function persistDoc(collectionName: string, id: string, data: any) {
   if (!db || !id) return;
   try {
     const cleanData = JSON.parse(JSON.stringify(data));
-    await setDoc(doc(db, collectionName, id), cleanData, { merge: true });
+    await setDoc(doc(db, collectionName, id), cleanData);
   } catch (err) {
     console.warn(`[Firestore] Failed to save ${collectionName}/${id}:`, err);
   }
@@ -1085,7 +1085,11 @@ app.patch('/api/bookings/:id', (req, res) => {
   if (partnerPhone !== undefined) booking.partnerPhone = partnerPhone;
   if (partnerCnpj !== undefined) booking.partnerCnpj = partnerCnpj;
   if (outcome !== undefined) {
-    booking.outcome = outcome || undefined;
+    if (outcome) {
+      booking.outcome = outcome;
+    } else {
+      delete booking.outcome;
+    }
   }
   booking.agendaTopic = `${booking.propertyType || 'Imóvel'}: ${booking.clientName || 'Cliente'}`;
 

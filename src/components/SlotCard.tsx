@@ -9,7 +9,7 @@ import {
   User,
   CreditCard,
   Building2,
-  ClipboardCheck,
+  Menu,
   CheckCircle2,
   XCircle,
   RefreshCw,
@@ -290,11 +290,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                       : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
                   }
                 >
-                  {OutcomeBadgeIcon ? (
-                    <OutcomeBadgeIcon className="w-4 h-4 shrink-0" />
-                  ) : (
-                    <ClipboardCheck className="w-4 h-4 shrink-0" />
-                  )}
+                  <Menu className="w-4 h-4 shrink-0" />
                 </button>
 
                 {isOutcomeMenuOpen && (

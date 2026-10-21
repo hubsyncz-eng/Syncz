@@ -81,7 +81,7 @@ export async function persistToFirestore(
   if (!db || !id) return;
   try {
     const cleanData = sanitizeForFirestore(data);
-    await setDoc(doc(db, collectionName, id), cleanData, { merge: true });
+    await setDoc(doc(db, collectionName, id), cleanData);
   } catch (error) {
     console.warn(`[Firestore] Failed to persist ${collectionName}/${id}:`, error);
   }
