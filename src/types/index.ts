@@ -68,6 +68,7 @@ export interface TimeSlot {
 
 export type PropertyType = 'Imóvel Individual' | 'Empreendimento';
 export type BookingOutcome = 'Aprovado' | 'Reprovado' | 'Remarcar' | 'Não compareceu';
+export type FidelizacaoResponsavel = 'Cliente' | 'Parceiro' | 'Construtora';
 
 export interface Booking {
   id: string;
@@ -90,6 +91,9 @@ export interface Booking {
   clientName?: string;
   clientCpf?: string;
   propertyType?: PropertyType;
+  fidelizacaoValor?: string;
+  fidelizacaoResponsavel?: FidelizacaoResponsavel;
+  isConstrutora?: boolean;
   agendaTopic: string;
   dealEstimate?: string;
   additionalAttendees?: string;

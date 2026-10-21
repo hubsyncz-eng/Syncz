@@ -953,6 +953,9 @@ app.post('/api/bookings', (req, res) => {
     clientName,
     clientCpf,
     propertyType,
+    fidelizacaoValor,
+    fidelizacaoResponsavel,
+    isConstrutora,
     agendaTopic,
     dealEstimate,
     additionalAttendees,
@@ -1006,6 +1009,9 @@ app.post('/api/bookings', (req, res) => {
     clientName,
     clientCpf,
     propertyType: finalPropertyType,
+    fidelizacaoValor: fidelizacaoValor || '',
+    fidelizacaoResponsavel: fidelizacaoResponsavel || undefined,
+    isConstrutora: fidelizacaoResponsavel === 'Construtora' || Boolean(isConstrutora),
     agendaTopic: finalAgendaTopic,
     dealEstimate,
     additionalAttendees,
@@ -1059,6 +1065,9 @@ app.patch('/api/bookings/:id', (req, res) => {
     clientName,
     clientCpf,
     propertyType,
+    fidelizacaoValor,
+    fidelizacaoResponsavel,
+    isConstrutora,
     partnerNotes,
     partnerId,
     partnerName,
@@ -1077,6 +1086,15 @@ app.patch('/api/bookings/:id', (req, res) => {
   if (clientName) booking.clientName = clientName;
   if (clientCpf) booking.clientCpf = clientCpf;
   if (propertyType) booking.propertyType = propertyType;
+  if (fidelizacaoValor !== undefined) booking.fidelizacaoValor = fidelizacaoValor;
+  if (fidelizacaoResponsavel !== undefined) {
+    if (fidelizacaoResponsavel) {
+      booking.fidelizacaoResponsavel = fidelizacaoResponsavel;
+    } else {
+      delete booking.fidelizacaoResponsavel;
+    }
+  }
+  if (isConstrutora !== undefined) booking.isConstrutora = Boolean(isConstrutora);
   if (partnerNotes !== undefined) booking.partnerNotes = partnerNotes;
   if (partnerId) booking.partnerId = partnerId;
   if (partnerName) booking.partnerName = partnerName;

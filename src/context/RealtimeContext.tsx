@@ -11,6 +11,7 @@ import {
   UserSession,
   PropertyType,
   BookingOutcome,
+  FidelizacaoResponsavel,
 } from '../types/index.ts';
 import {
   db,
@@ -94,6 +95,9 @@ interface RealtimeContextValue {
     clientName?: string;
     clientCpf?: string;
     propertyType?: PropertyType;
+    fidelizacaoValor?: string;
+    fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
+    isConstrutora?: boolean;
     agendaTopic?: string;
     dealEstimate?: string;
     additionalAttendees?: string;
@@ -105,6 +109,9 @@ interface RealtimeContextValue {
       clientName: string;
       clientCpf: string;
       propertyType: PropertyType;
+      fidelizacaoValor?: string;
+      fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
+      isConstrutora?: boolean;
       partnerNotes?: string;
       partnerId?: string;
       partnerName?: string;
@@ -1287,6 +1294,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     clientName?: string;
     clientCpf?: string;
     propertyType?: PropertyType;
+    fidelizacaoValor?: string;
+    fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
+    isConstrutora?: boolean;
     agendaTopic?: string;
     dealEstimate?: string;
     additionalAttendees?: string;
@@ -1355,6 +1365,12 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clientName: bookingData.clientName || '',
       clientCpf: bookingData.clientCpf || '',
       propertyType: finalPropertyType,
+      fidelizacaoValor: bookingData.fidelizacaoValor || '',
+      ...(bookingData.fidelizacaoResponsavel
+        ? { fidelizacaoResponsavel: bookingData.fidelizacaoResponsavel }
+        : {}),
+      isConstrutora:
+        bookingData.fidelizacaoResponsavel === 'Construtora' || Boolean(bookingData.isConstrutora),
       agendaTopic: finalAgendaTopic,
       dealEstimate: bookingData.dealEstimate || '',
       additionalAttendees: bookingData.additionalAttendees || '',
@@ -1410,6 +1426,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clientName: string;
       clientCpf: string;
       propertyType: PropertyType;
+      fidelizacaoValor?: string;
+      fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
+      isConstrutora?: boolean;
       partnerNotes?: string;
       partnerId?: string;
       partnerName?: string;
@@ -1417,6 +1436,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       partnerEmail?: string;
       partnerPhone?: string;
       partnerCnpj?: string;
+      outcome?: BookingOutcome;
     }
   ): Promise<Booking> => {
     const apiRes = await safeFetchJson(`/api/bookings/${id}`, {
@@ -1436,6 +1456,18 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         clientName: updateData.clientName,
         clientCpf: updateData.clientCpf,
         propertyType: updateData.propertyType,
+        fidelizacaoValor:
+          updateData.fidelizacaoValor !== undefined
+            ? updateData.fidelizacaoValor
+            : existing.fidelizacaoValor,
+        fidelizacaoResponsavel:
+          updateData.fidelizacaoResponsavel !== undefined
+            ? updateData.fidelizacaoResponsavel || undefined
+            : existing.fidelizacaoResponsavel,
+        isConstrutora:
+          updateData.isConstrutora !== undefined
+            ? updateData.isConstrutora
+            : existing.isConstrutora,
         partnerNotes:
           updateData.partnerNotes !== undefined ? updateData.partnerNotes : existing.partnerNotes,
         partnerId: updateData.partnerId || existing.partnerId,

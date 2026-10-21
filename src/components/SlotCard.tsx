@@ -9,6 +9,7 @@ import {
   User,
   CreditCard,
   Building2,
+  Banknote,
   Menu,
   CheckCircle2,
   XCircle,
@@ -335,7 +336,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         )}
       </div>
 
-      {/* Card Content for Booked Slot: Ícones ao lado do Nome do Cliente, CPF e Parceiro */}
+      {/* Card Content for Booked Slot: Ícones ao lado do Nome do Cliente, CPF, Parceiro e Fidelização */}
       {isBooked && booking && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 md:gap-4 text-sm">
           <div
@@ -362,6 +363,25 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               {formatTitleCase(booking.partnerName)}
             </span>
           </div>
+
+          {(booking.fidelizacaoValor || booking.fidelizacaoResponsavel || booking.isConstrutora) && (
+            <div
+              className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate md:col-span-3"
+              title={`Fidelização: R$ ${booking.fidelizacaoValor || '0,00'}${
+                booking.fidelizacaoResponsavel || (booking.isConstrutora ? 'Construtora' : '')
+                  ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
+                  : ''
+              }`}
+            >
+              <Banknote className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+              <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                R$ {booking.fidelizacaoValor || '0,00'}
+                {booking.fidelizacaoResponsavel || booking.isConstrutora
+                  ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
+                  : ''}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

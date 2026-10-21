@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TimeSlot, Booking, PropertyType } from '../types/index.ts';
+import { TimeSlot, Booking, PropertyType, FidelizacaoResponsavel } from '../types/index.ts';
 import { useRealtime } from '../context/RealtimeContext.tsx';
 import { formatFullPortugueseDate, formatDateToISO } from '../utils/dateUtils.ts';
 import confetti from 'canvas-confetti';
@@ -90,11 +90,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const currentSlotInState = slots.find((s) => s.id === slot.id) || slot;
   const isSlotStillAvailable = existingBooking || currentSlotInState.status === 'available';
 
-  // Specific Booking Fields: Cliente, CPF, Seletor Imóvel/Empreendimento, Parceiro (Agência), Notas
+  // Specific Booking Fields: Cliente, CPF, Seletor Imóvel/Empreendimento, Fidelização + Responsável, Parceiro (Agência), Notas
   const [clientName, setClientName] = useState(existingBooking?.clientName || '');
   const [clientCpf, setClientCpf] = useState(existingBooking?.clientCpf || '');
   const [propertyType, setPropertyType] = useState<PropertyType>(
     existingBooking?.propertyType || 'Imóvel Individual'
+  );
+  const [fidelizacaoValor, setFidelizacaoValor] = useState(
+    existingBooking?.fidelizacaoValor || ''
+  );
+  const [fidelizacaoResponsavel, setFidelizacaoResponsavel] = useState<
+    FidelizacaoResponsavel | ''
+  >(
+    existingBooking?.fidelizacaoResponsavel ||
+      (existingBooking?.isConstrutora ? 'Construtora' : '')
   );
   const [partnerNotes, setPartnerNotes] = useState(existingBooking?.partnerNotes || '');
 
@@ -129,6 +138,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  };
+
+  // Helper for BRL Currency masking (0.000,00)
+  const formatCurrencyBRL = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 13);
+    if (!digits) return '';
+    const cents = parseInt(digits, 10);
+    if (isNaN(cents) || cents === 0) return '';
+    const numeric = cents / 100;
+    return numeric.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,6 +189,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           clientName: clientName.trim(),
           clientCpf: clientCpf.trim(),
           propertyType,
+          fidelizacaoValor: fidelizacaoValor.trim(),
+          fidelizacaoResponsavel,
+          isConstrutora: fidelizacaoResponsavel === 'Construtora',
           partnerNotes: partnerNotes.trim() ? partnerNotes.trim() : undefined,
           ...(isAgencyActor && selectedPartnerFromList
             ? {
@@ -195,6 +220,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         clientName: clientName.trim(),
         clientCpf: clientCpf.trim(),
         propertyType,
+        fidelizacaoValor: fidelizacaoValor.trim(),
+        fidelizacaoResponsavel,
+        isConstrutora: fidelizacaoResponsavel === 'Construtora',
         agendaTopic: `${propertyType}: ${clientName.trim()}`,
         partnerNotes: partnerNotes.trim() ? partnerNotes.trim() : undefined,
       });
@@ -324,6 +352,50 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <Building className="w-4 h-4" />
                 <span>Empreendimento</span>
               </button>
+            </div>
+          </div>
+
+          {/* Fidelização (Valor em R$ 0.000,00) + 3 botões embaixo: Cliente, Parceiro, Construtora */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Fidelização
+            </label>
+            <div className="relative">
+              <span className="text-xs sm:text-sm font-bold text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 select-none pointer-events-none">
+                R$
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={fidelizacaoValor}
+                onChange={(e) => setFidelizacaoValor(formatCurrencyBRL(e.target.value))}
+                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:outline-none focus:border-cyan-500 text-xs sm:text-sm placeholder:text-slate-600"
+                placeholder="0.000,00"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mt-2.5">
+              {(['Cliente', 'Parceiro', 'Construtora'] as FidelizacaoResponsavel[]).map(
+                (opcao) => {
+                  const isSelected = fidelizacaoResponsavel === opcao;
+                  return (
+                    <button
+                      key={opcao}
+                      type="button"
+                      onClick={() =>
+                        setFidelizacaoResponsavel((prev) => (prev === opcao ? '' : opcao))
+                      }
+                      className={`py-3 px-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
+                      }`}
+                    >
+                      <span>{opcao}</span>
+                    </button>
+                  );
+                }
+              )}
             </div>
           </div>
 
