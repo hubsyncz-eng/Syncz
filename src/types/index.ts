@@ -126,13 +126,25 @@ export interface ActivityEvent {
   type:
     | 'slot_created'
     | 'slot_booked'
+    | 'slot_deleted'
+    | 'slot_toggled'
     | 'booking_confirmed'
+    | 'booking_updated'
     | 'booking_cancelled'
     | 'slots_batch_opened'
     | 'partner_active'
     | 'partner_registered'
-    | 'agency_registered';
+    | 'partner_updated'
+    | 'partner_deleted'
+    | 'agency_registered'
+    | 'agency_updated'
+    | 'agency_deleted'
+    | 'consultant_registered'
+    | 'consultant_updated'
+    | 'consultant_deleted';
   timestamp: string;
+  actorName?: string;
+  actionText?: string;
   title: string;
   description: string;
   partnerName?: string;

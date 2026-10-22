@@ -74,6 +74,18 @@ export function formatRelativeTime(isoStr: string): string {
   return `há ${diffDays} dias`;
 }
 
+export function formatAuditDateTime(isoStr: string): string {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return isoStr;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${hh}:${min} - ${dd}/${mm}/${yyyy}`;
+}
+
 // Download .ics calendar event
 export function downloadICS(booking: {
   protocol: string;

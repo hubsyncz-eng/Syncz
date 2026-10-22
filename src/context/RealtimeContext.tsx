@@ -859,6 +859,63 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [addToast, fetchState]);
 
+  // Audit Helper
+  const getActorLabel = (): string => {
+    if (!currentUser) return 'Sistema';
+    if (currentUser.role === 'admin') {
+      if (adminPerspective === 'agency_view' && currentAgency) {
+        return `Master (Agência ${currentAgency.name})`;
+      }
+      if (adminPerspective === 'partner_view' && currentPartner) {
+        return `Master (Parceiro ${currentPartner.name})`;
+      }
+      return 'Master';
+    }
+    if (currentUser.role === 'agency') {
+      if (currentUser.isAgencyUser) {
+        const ag = agencies.find((a) => a.id === currentUser.agencyId);
+        return ag ? `${currentUser.name} (${ag.name})` : currentUser.name;
+      }
+      return currentUser.name || 'Agência';
+    }
+    if (currentUser.role === 'partner') {
+      return currentUser.name || 'Parceiro';
+    }
+    return currentUser.name || 'Usuário';
+  };
+
+  const formatBrDate = (dateStr?: string): string => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  const recordAuditActivity = async (
+    type: ActivityEvent['type'],
+    actionText: string,
+    extra?: {
+      partnerName?: string;
+      agencyName?: string;
+      slotTime?: string;
+      protocol?: string;
+    }
+  ) => {
+    const actorName = getActorLabel();
+    const act: ActivityEvent = {
+      id: `act_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      type,
+      timestamp: new Date().toISOString(),
+      actorName,
+      actionText,
+      title: `${actorName} - ${actionText}`,
+      description: actionText,
+      ...extra,
+    };
+    setActivities((prev) => [act, ...prev]);
+    await persistToFirestore('activities', act.id, act);
+  };
+
   // Actions
   const registerAgency = async (data: Partial<Agency>): Promise<Agency> => {
     const apiRes = await safeFetchJson('/api/agencies', {
@@ -898,6 +955,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await persistToFirestore('agencies', createdAgency.id, createdAgency);
     setAgencies((prev) => [...prev.filter((a) => a.id !== createdAgency.id), createdAgency]);
+    await recordAuditActivity('agency_registered', `Inclusão da agência ${createdAgency.name}`, {
+      agencyName: createdAgency.name,
+    });
 
     addToast({
       type: 'success',
@@ -941,6 +1001,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     await persistToFirestore('agencies', updatedAgency.id, updatedAgency);
+    await recordAuditActivity(
+      'agency_updated',
+      `Alteração do cadastro da agência ${updatedAgency.name}`,
+      { agencyName: updatedAgency.name }
+    );
 
     setAgencies((prev) => prev.map((a) => (a.id === id ? updatedAgency : a)));
     setCurrentAgency((prev) => (prev && prev.id === id ? updatedAgency : prev));
@@ -972,10 +1037,16 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteAgency = async (id: string): Promise<boolean> => {
+    const targetAgency = agencies.find((a) => a.id === id);
     await safeFetchJson(`/api/agencies/${id}`, {
       method: 'DELETE',
     });
     await removeFromFirestore('agencies', id);
+    await recordAuditActivity(
+      'agency_deleted',
+      `Exclusão da agência ${targetAgency?.name || id}`,
+      { agencyName: targetAgency?.name }
+    );
 
     setAgencies((prev) => {
       const filtered = prev.filter((a) => a.id !== id);
@@ -1035,6 +1106,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await persistToFirestore('partners', createdPartner.id, createdPartner);
     setPartners((prev) => [...prev.filter((p) => p.id !== createdPartner.id), createdPartner]);
+    await recordAuditActivity('partner_registered', `Inclusão do parceiro ${createdPartner.name}`, {
+      partnerName: createdPartner.name,
+    });
 
     addToast({
       type: 'success',
@@ -1087,6 +1161,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     await persistToFirestore('partners', updatedPartner.id, updatedPartner);
+    await recordAuditActivity(
+      'partner_updated',
+      `Alteração do cadastro do parceiro ${updatedPartner.name}`,
+      { partnerName: updatedPartner.name }
+    );
 
     setPartners((prev) => prev.map((p) => (p.id === id ? updatedPartner : p)));
     setCurrentPartner((prev) => (prev && prev.id === id ? updatedPartner : prev));
@@ -1160,13 +1239,26 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       body: JSON.stringify(updatedPartner),
     });
     await persistToFirestore('partners', updatedPartner.id, updatedPartner);
+
+    const targetAg = agencies.find((a) => a.id === agencyId);
+    await recordAuditActivity(
+      'partner_updated',
+      `${isCurrentlyAllowed ? 'Remoção' : 'Liberação'} de acesso do parceiro ${existing.name} na agência ${targetAg?.name || agencyId}`,
+      { partnerName: existing.name, agencyName: targetAg?.name }
+    );
   };
 
   const deletePartner = async (id: string): Promise<boolean> => {
+    const targetPartner = partners.find((p) => p.id === id);
     await safeFetchJson(`/api/partners/${id}`, {
       method: 'DELETE',
     });
     await removeFromFirestore('partners', id);
+    await recordAuditActivity(
+      'partner_deleted',
+      `Exclusão do parceiro ${targetPartner?.name || id}`,
+      { partnerName: targetPartner?.name }
+    );
 
     setPartners((prev) => {
       const filtered = prev.filter((p) => p.id !== id);
@@ -1222,6 +1314,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...prev.filter((c) => c.id !== createdConsultant.id),
       createdConsultant,
     ]);
+    await recordAuditActivity(
+      'consultant_registered',
+      `Inclusão do usuário ${createdConsultant.name}`
+    );
 
     addToast({
       type: 'success',
@@ -1260,6 +1356,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await persistToFirestore('consultants', updated.id, updated);
     setConsultants((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    await recordAuditActivity(
+      'consultant_updated',
+      `Alteração do cadastro do usuário ${updated.name}`
+    );
 
     addToast({
       type: 'success',
@@ -1270,11 +1370,16 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deleteConsultant = async (id: string): Promise<boolean> => {
+    const targetConsultant = consultants.find((c) => c.id === id);
     await safeFetchJson(`/api/consultants/${id}`, {
       method: 'DELETE',
     });
     await removeFromFirestore('consultants', id);
     setConsultants((prev) => prev.filter((c) => c.id !== id));
+    await recordAuditActivity(
+      'consultant_deleted',
+      `Exclusão do usuário ${targetConsultant?.name || id}`
+    );
     addToast({
       type: 'info',
       title: 'Usuário Excluído',
@@ -1316,6 +1421,15 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       await persistToFirestore('bookings', booking.id, booking);
       setBookings((prev) => [booking, ...prev.filter((b) => b.id !== booking.id)]);
+      await recordAuditActivity(
+        'booking_confirmed',
+        `Inclusão de agendamento do cliente ${booking.clientName || booking.partnerName} (${booking.slotStartTime} - ${formatBrDate(booking.slotDate)})`,
+        {
+          partnerName: booking.partnerName,
+          slotTime: `${booking.slotDate} ${booking.slotStartTime}`,
+          protocol: booking.protocol,
+        }
+      );
       addToast({
         type: 'success',
         title: 'Confirmação Automática Concluída!',
@@ -1386,26 +1500,22 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       bookingId,
     };
 
-    const act: ActivityEvent = {
-      id: `act_${Date.now()}`,
-      type: 'booking_confirmed',
-      timestamp: new Date().toISOString(),
-      title: 'Novo Agendamento Confirmado Automaticamente',
-      description: `${booking.partnerName} confirmou horário para ${slot.date} às ${slot.startTime} com ${slot.consultantName}.`,
-      partnerName: booking.partnerName,
-      slotTime: `${slot.date} ${slot.startTime}`,
-      protocol,
-    };
-
     await Promise.all([
       persistToFirestore('slots', updatedSlot.id, updatedSlot),
       persistToFirestore('bookings', booking.id, booking),
-      persistToFirestore('activities', act.id, act),
     ]);
 
     setSlots((prev) => prev.map((s) => (s.id === updatedSlot.id ? updatedSlot : s)));
     setBookings((prev) => [booking, ...prev.filter((b) => b.id !== booking.id)]);
-    setActivities((prev) => [act, ...prev]);
+    await recordAuditActivity(
+      'booking_confirmed',
+      `Inclusão de agendamento do cliente ${booking.clientName || booking.partnerName} (${slot.startTime} - ${formatBrDate(slot.date)})`,
+      {
+        partnerName: booking.partnerName,
+        slotTime: `${slot.date} ${slot.startTime}`,
+        protocol,
+      }
+    );
 
     addToast({
       type: 'success',
@@ -1439,54 +1549,75 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       outcome?: BookingOutcome;
     }
   ): Promise<Booking> => {
+    const existing = bookings.find((b) => b.id === id);
+
     const apiRes = await safeFetchJson(`/api/bookings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updateData),
     });
 
-    let updatedBooking: Booking;
-    if (apiRes.isApiAvailable && apiRes.ok && apiRes.data?.booking) {
-      updatedBooking = apiRes.data.booking;
-    } else {
-      const existing = bookings.find((b) => b.id === id);
-      if (!existing) throw new Error('Agendamento não encontrado.');
-      updatedBooking = {
-        ...existing,
-        clientName: updateData.clientName,
-        clientCpf: updateData.clientCpf,
-        propertyType: updateData.propertyType,
-        fidelizacaoValor:
-          updateData.fidelizacaoValor !== undefined
-            ? updateData.fidelizacaoValor
-            : existing.fidelizacaoValor,
-        fidelizacaoResponsavel:
-          updateData.fidelizacaoResponsavel !== undefined
-            ? updateData.fidelizacaoResponsavel || undefined
-            : existing.fidelizacaoResponsavel,
-        isConstrutora:
-          updateData.isConstrutora !== undefined
-            ? updateData.isConstrutora
-            : existing.isConstrutora,
-        partnerNotes:
-          updateData.partnerNotes !== undefined ? updateData.partnerNotes : existing.partnerNotes,
-        partnerId: updateData.partnerId || existing.partnerId,
-        partnerName: updateData.partnerName || existing.partnerName,
-        partnerRepresentative:
-          updateData.partnerRepresentative || existing.partnerRepresentative,
-        partnerEmail: updateData.partnerEmail || existing.partnerEmail,
-        partnerPhone:
-          updateData.partnerPhone !== undefined ? updateData.partnerPhone : existing.partnerPhone,
-        partnerCnpj:
-          updateData.partnerCnpj !== undefined ? updateData.partnerCnpj : existing.partnerCnpj,
-        outcome:
-          updateData.outcome !== undefined ? updateData.outcome : existing.outcome,
-        agendaTopic: `${updateData.propertyType || 'Imóvel'}: ${updateData.clientName || 'Cliente'}`,
-      };
+    const baseBooking: Booking | undefined =
+      existing || (apiRes.isApiAvailable && apiRes.ok ? apiRes.data?.booking : undefined);
+
+    if (!baseBooking) {
+      throw new Error('Agendamento não encontrado.');
     }
 
-    await persistToFirestore('bookings', updatedBooking.id, updatedBooking);
+    const updatedBooking: Booking = {
+      ...baseBooking,
+      clientName: updateData.clientName,
+      clientCpf: updateData.clientCpf,
+      propertyType: updateData.propertyType,
+      fidelizacaoValor:
+        updateData.fidelizacaoValor !== undefined
+          ? updateData.fidelizacaoValor
+          : baseBooking.fidelizacaoValor,
+      isConstrutora:
+        updateData.isConstrutora !== undefined
+          ? updateData.isConstrutora
+          : baseBooking.isConstrutora,
+      partnerId: updateData.partnerId || baseBooking.partnerId,
+      partnerName: updateData.partnerName || baseBooking.partnerName,
+      partnerRepresentative:
+        updateData.partnerRepresentative || baseBooking.partnerRepresentative,
+      partnerEmail: updateData.partnerEmail || baseBooking.partnerEmail,
+      partnerPhone:
+        updateData.partnerPhone !== undefined ? updateData.partnerPhone : baseBooking.partnerPhone,
+      partnerCnpj:
+        updateData.partnerCnpj !== undefined ? updateData.partnerCnpj : baseBooking.partnerCnpj,
+      outcome:
+        updateData.outcome !== undefined ? updateData.outcome : baseBooking.outcome,
+      agendaTopic: `${updateData.propertyType || 'Imóvel'}: ${updateData.clientName || 'Cliente'}`,
+    };
+
+    if (updateData.fidelizacaoResponsavel !== undefined) {
+      if (updateData.fidelizacaoResponsavel) {
+        updatedBooking.fidelizacaoResponsavel = updateData.fidelizacaoResponsavel;
+      } else {
+        delete updatedBooking.fidelizacaoResponsavel;
+      }
+    }
+
+    if (updateData.partnerNotes !== undefined) {
+      const trimmedNotes = updateData.partnerNotes.trim();
+      if (trimmedNotes) {
+        updatedBooking.partnerNotes = trimmedNotes;
+      } else {
+        delete updatedBooking.partnerNotes;
+      }
+    }
+
     setBookings((prev) => prev.map((b) => (b.id === id ? updatedBooking : b)));
+    await persistToFirestore('bookings', updatedBooking.id, updatedBooking);
+    await recordAuditActivity(
+      'booking_updated',
+      `Alteração no agendamento do cliente ${updatedBooking.clientName || updatedBooking.partnerName} (${updatedBooking.slotStartTime} - ${formatBrDate(updatedBooking.slotDate)})`,
+      {
+        partnerName: updatedBooking.partnerName,
+        protocol: updatedBooking.protocol,
+      }
+    );
 
     addToast({
       type: 'success',
@@ -1522,6 +1653,16 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     await persistToFirestore('bookings', updatedBooking.id, updatedBooking);
+    await recordAuditActivity(
+      'booking_updated',
+      outcome
+        ? `Marcação de status "${outcome}" no agendamento de ${existing.clientName || existing.partnerName} (${existing.slotStartTime} - ${formatBrDate(existing.slotDate)})`
+        : `Remoção de status no agendamento de ${existing.clientName || existing.partnerName} (${existing.slotStartTime} - ${formatBrDate(existing.slotDate)})`,
+      {
+        partnerName: existing.partnerName,
+        protocol: existing.protocol,
+      }
+    );
 
     addToast({
       type: 'info',
@@ -1561,6 +1702,15 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           await persistToFirestore('slots', updatedSlot.id, updatedSlot);
           setSlots((prev) => prev.map((s) => (s.id === updatedSlot.id ? updatedSlot : s)));
         }
+
+        await recordAuditActivity(
+          'booking_cancelled',
+          `Cancelamento do agendamento do cliente ${existingBooking.clientName || existingBooking.partnerName} (${existingBooking.slotStartTime} - ${formatBrDate(existingBooking.slotDate)})`,
+          {
+            partnerName: existingBooking.partnerName,
+            protocol: existingBooking.protocol,
+          }
+        );
       } else if (apiRes.isApiAvailable && !apiRes.ok) {
         throw new Error(apiRes.data?.error || 'Erro ao cancelar');
       }
@@ -1598,6 +1748,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const updatedSlot: TimeSlot = { ...slot, status: newStatus };
       await persistToFirestore('slots', updatedSlot.id, updatedSlot);
       setSlots((prev) => prev.map((s) => (s.id === slotId ? updatedSlot : s)));
+      await recordAuditActivity(
+        'slot_toggled',
+        `${newStatus === 'locked' ? 'Bloqueio' : 'Desbloqueio'} de horário (${slot.startTime} - ${formatBrDate(slot.date)})`,
+        { slotTime: `${slot.date} ${slot.startTime}` }
+      );
       return true;
     } catch (e: any) {
       addToast({
@@ -1622,6 +1777,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
       await removeFromFirestore('slots', slotId);
       setSlots((prev) => prev.filter((s) => s.id !== slotId));
+      await recordAuditActivity(
+        'slot_deleted',
+        `Exclusão de horário disponível (${slot ? `${slot.startTime} - ${formatBrDate(slot.date)}` : slotId})`
+      );
       addToast({
         type: 'info',
         title: 'Horário Removido',
@@ -1655,6 +1814,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return [...prev, ...apiRes.data.slots.filter((s: TimeSlot) => !existingIds.has(s.id))];
         });
       }
+      await recordAuditActivity(
+        'slots_batch_opened',
+        `Inclusão de ${apiRes.data.createdCount} horários na grade (${formatBrDate(params.startDate)} a ${formatBrDate(params.endDate)})`
+      );
       addToast({
         type: 'success',
         title: 'Grade Semanal Publicada!',
@@ -1759,6 +1922,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       persistToFirestore('slots', s.id, s);
     }
     setSlots((prev) => [...prev, ...newSlots]);
+    await recordAuditActivity(
+      'slots_batch_opened',
+      `Inclusão de ${newSlots.length} horários na grade (${formatBrDate(params.startDate)} a ${formatBrDate(params.endDate)})`
+    );
 
     addToast({
       type: 'success',
@@ -1813,6 +1980,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await persistToFirestore('slots', createdSlot.id, createdSlot);
     setSlots((prev) => [createdSlot, ...prev.filter((s) => s.id !== createdSlot.id)]);
+    await recordAuditActivity(
+      'slot_created',
+      `Inclusão de horário disponível (${createdSlot.startTime} - ${formatBrDate(createdSlot.date)})`,
+      { slotTime: `${createdSlot.date} ${createdSlot.startTime}` }
+    );
 
     addToast({
       type: 'success',

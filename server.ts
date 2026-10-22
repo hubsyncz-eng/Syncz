@@ -388,20 +388,9 @@ app.post('/api/agencies', (req, res) => {
   agencies.push(newAgency);
   persistDoc('agencies', newAgency.id, newAgency);
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'agency_registered',
-    timestamp: new Date().toISOString(),
-    title: 'Nova Agência Cadastrada',
-    description: `O Administrador cadastrou a ${newAgency.name}.`,
-    agencyName: newAgency.name,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'AGENCY_REGISTERED',
-    payload: { agency: newAgency, agencies, activity: act },
+    payload: { agency: newAgency, agencies },
   });
 
   return res.status(201).json(newAgency);
@@ -439,20 +428,9 @@ app.put('/api/agencies/:id', (req, res) => {
   agencies[idx] = updatedAgency;
   persistDoc('agencies', updatedAgency.id, updatedAgency);
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'agency_registered',
-    timestamp: new Date().toISOString(),
-    title: 'Cadastro de Agência Atualizado',
-    description: `Os dados cadastrais da agência ${updatedAgency.name} foram atualizados no sistema.`,
-    agencyName: updatedAgency.name,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'AGENCY_REGISTERED',
-    payload: { agency: updatedAgency, agencies, activity: act },
+    payload: { agency: updatedAgency, agencies },
   });
 
   return res.json(updatedAgency);
@@ -503,20 +481,9 @@ app.post('/api/partners', (req, res) => {
   partners.push(newPartner);
   persistDoc('partners', newPartner.id, newPartner);
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'partner_registered',
-    timestamp: new Date().toISOString(),
-    title: 'Novo Parceiro Cadastrado',
-    description: `O parceiro ${newPartner.name} foi homologado no sistema.`,
-    partnerName: newPartner.name,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'PARTNER_REGISTERED',
-    payload: { partner: newPartner, partners, activity: act },
+    payload: { partner: newPartner, partners },
   });
 
   return res.status(201).json(newPartner);
@@ -572,24 +539,12 @@ app.put('/api/partners/:id', (req, res) => {
     return b;
   });
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'partner_registered',
-    timestamp: new Date().toISOString(),
-    title: 'Cadastro de Parceiro Atualizado',
-    description: `Os dados cadastrais de ${updatedPartner.name} foram atualizados no sistema.`,
-    partnerName: updatedPartner.name,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'PARTNER_REGISTERED',
     payload: {
       partner: updatedPartner,
       partners,
       bookings: hasUpdatedBookings ? bookings : undefined,
-      activity: act,
     },
   });
 
@@ -751,20 +706,9 @@ app.post('/api/slots', (req, res) => {
   slots.unshift(newSlot);
   persistDoc('slots', newSlot.id, newSlot);
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'slot_created',
-    timestamp: new Date().toISOString(),
-    title: 'Novo Horário Disponibilizado',
-    description: `A Agência abriu o horário ${newSlot.date} às ${newSlot.startTime} com ${newSlot.consultantName}.`,
-    slotTime: `${newSlot.date} ${newSlot.startTime}`,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'SLOTS_UPDATED',
-    payload: { slots, activity: act },
+    payload: { slots },
   });
 
   return res.status(201).json(newSlot);
@@ -874,19 +818,9 @@ app.post('/api/slots/batch', (req, res) => {
     persistDoc('slots', s.id, s);
   }
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'slots_batch_opened',
-    timestamp: new Date().toISOString(),
-    title: 'Grade Semanal Atualizada',
-    description: `A Agência abriu ${newSlots.length} novos horários com ${consultant.name}.`,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'SLOTS_UPDATED',
-    payload: { slots, activity: act },
+    payload: { slots },
   });
 
   return res.status(201).json({ createdCount: newSlots.length, slots: newSlots });
@@ -1028,25 +962,11 @@ app.post('/api/bookings', (req, res) => {
   persistDoc('slots', slot.id, slot);
   persistDoc('bookings', booking.id, booking);
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'booking_confirmed',
-    timestamp: new Date().toISOString(),
-    title: 'Novo Agendamento Confirmado Automaticamente',
-    description: `${partnerName} confirmou horário para ${slot.date} às ${slot.startTime} com ${slot.consultantName}.`,
-    partnerName,
-    slotTime: `${slot.date} ${slot.startTime}`,
-    protocol,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'SLOT_BOOKED',
     payload: {
       slot,
       booking,
-      activity: act,
     },
   });
 
@@ -1059,7 +979,7 @@ app.post('/api/bookings', (req, res) => {
 });
 
 // Update booking fields (Cliente, CPF, Imóvel/Empreendimento, Parceiro, Notas, Outcome)
-app.patch('/api/bookings/:id', (req, res) => {
+app.patch('/api/bookings/:id', async (req, res) => {
   const { id } = req.params;
   const {
     clientName,
@@ -1095,7 +1015,14 @@ app.patch('/api/bookings/:id', (req, res) => {
     }
   }
   if (isConstrutora !== undefined) booking.isConstrutora = Boolean(isConstrutora);
-  if (partnerNotes !== undefined) booking.partnerNotes = partnerNotes;
+  if (partnerNotes !== undefined) {
+    const trimmedNotes = String(partnerNotes).trim();
+    if (trimmedNotes) {
+      booking.partnerNotes = trimmedNotes;
+    } else {
+      delete booking.partnerNotes;
+    }
+  }
   if (partnerId) booking.partnerId = partnerId;
   if (partnerName) booking.partnerName = partnerName;
   if (partnerRepresentative) booking.partnerRepresentative = partnerRepresentative;
@@ -1111,7 +1038,7 @@ app.patch('/api/bookings/:id', (req, res) => {
   }
   booking.agendaTopic = `${booking.propertyType || 'Imóvel'}: ${booking.clientName || 'Cliente'}`;
 
-  persistDoc('bookings', booking.id, booking);
+  await persistDoc('bookings', booking.id, booking);
 
   broadcast({
     type: 'BOOKING_UPDATED',
@@ -1147,18 +1074,6 @@ app.post('/api/bookings/:id/cancel', (req, res) => {
   }
   persistDoc('bookings', booking.id, booking);
 
-  const act: ActivityEvent = {
-    id: `act_${Date.now()}`,
-    type: 'booking_cancelled',
-    timestamp: new Date().toISOString(),
-    title: 'Agendamento Cancelado - Horário Liberado',
-    description: `Agendamento ${booking.protocol} de ${booking.partnerName} foi cancelado. O horário voltou a ficar disponível.`,
-    partnerName: booking.partnerName,
-    protocol: booking.protocol,
-  };
-  activities.unshift(act);
-  persistDoc('activities', act.id, act);
-
   broadcast({
     type: 'SLOT_CANCELLED',
     payload: {
@@ -1166,7 +1081,6 @@ app.post('/api/bookings/:id/cancel', (req, res) => {
       slotId: booking.slotId,
       booking,
       slot,
-      activity: act,
     },
   });
 

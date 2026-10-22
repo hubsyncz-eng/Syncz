@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRealtime } from '../context/RealtimeContext.tsx';
 import { Agency, PartnerProfile, Booking, TimeSlot } from '../types/index.ts';
-import { formatRelativeTime } from '../utils/dateUtils.ts';
+import { formatAuditDateTime } from '../utils/dateUtils.ts';
 import { AgencyDashboard } from './AgencyDashboard.tsx';
 import { PartnerView } from './PartnerView.tsx';
 import { PartnerRegisterModal } from './PartnerRegisterModal.tsx';
@@ -455,28 +455,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <h3 className="text-lg font-bold text-white mb-4 pb-3 border-b border-slate-800">
                 Registro Global de Auditoria de Acontecimentos
               </h3>
-              <div className="space-y-3 max-w-3xl">
-                {activities.map((act) => (
-                  <div
-                    key={act.id}
-                    className="flex items-start gap-3 p-4 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs"
-                  >
-                    <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 shrink-0 mt-0.5">
-                      <Activity className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="font-bold text-sm text-white">{act.title}</h4>
-                        <span className="text-slate-500 text-[11px]">{formatRelativeTime(act.timestamp)}</span>
+              {activities.length === 0 ? (
+                <div className="text-xs text-slate-400 py-6 text-center">
+                  Nenhuma alteração registrada até o momento.
+                </div>
+              ) : (
+                <div className="space-y-2.5 w-full">
+                  {activities.map((act) => {
+                    const actor =
+                      act.actorName ||
+                      (act.type === 'agency_registered' || act.type === 'partner_registered'
+                        ? 'Master'
+                        : act.partnerName || act.agencyName || 'Agência');
+                    const action = act.actionText || act.description || act.title;
+                    const dateTimeStr = formatAuditDateTime(act.timestamp);
+
+                    return (
+                      <div
+                        key={act.id}
+                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 text-xs sm:text-sm"
+                      >
+                        <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 shrink-0">
+                          <Activity className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-slate-200 leading-relaxed">
+                          <span className="font-bold text-white">{actor}</span>
+                          <span className="text-slate-400"> - </span>
+                          <span>{action}</span>
+                          <span className="text-slate-400"> em </span>
+                          <span className="font-semibold text-cyan-400">{dateTimeStr}</span>
+                        </div>
                       </div>
-                      <p className="text-slate-300 mt-1 leading-relaxed">{act.description}</p>
-                      {act.protocol && (
-                        <div className="mt-1 font-mono text-cyan-400">Protocolo: {act.protocol}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </>

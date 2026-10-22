@@ -192,7 +192,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           fidelizacaoValor: fidelizacaoValor.trim(),
           fidelizacaoResponsavel,
           isConstrutora: fidelizacaoResponsavel === 'Construtora',
-          partnerNotes: partnerNotes.trim() ? partnerNotes.trim() : undefined,
+          partnerNotes: partnerNotes.trim(),
           ...(isAgencyActor && selectedPartnerFromList
             ? {
                 partnerId: selectedPartnerFromList.id,
@@ -224,7 +224,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         fidelizacaoResponsavel,
         isConstrutora: fidelizacaoResponsavel === 'Construtora',
         agendaTopic: `${propertyType}: ${clientName.trim()}`,
-        partnerNotes: partnerNotes.trim() ? partnerNotes.trim() : undefined,
+        partnerNotes: partnerNotes.trim(),
       });
 
       // Fire celebratory confetti!

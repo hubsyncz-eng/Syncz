@@ -113,6 +113,7 @@ const MainLayout: React.FC = () => {
 
       {bookingModalData && (
         <BookingModal
+          key={bookingModalData.booking?.id || bookingModalData.slot.id}
           slot={bookingModalData.slot}
           existingBooking={bookingModalData.booking}
           onClose={() => setBookingModalData(null)}
