@@ -64,9 +64,19 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   }, [currentAgency, currentUser, agencies]);
 
   const sortedPartners = useMemo(() => {
-    return [...partners].sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
-    );
+    return [...partners]
+      .filter((p) => p.segment?.toLowerCase() !== 'construtora')
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+      );
+  }, [partners]);
+
+  const sortedConstrutoras = useMemo(() => {
+    return [...partners]
+      .filter((p) => p.segment?.toLowerCase() === 'construtora')
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+      );
   }, [partners]);
 
   // Agency display name matching partner greeting style
@@ -78,8 +88,9 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return `Agência ${rawName}`;
   }, [currentAgency]);
 
-  // Partner creation / editing / preview state inside Agency View
+  // Partner / Construtora creation / editing / preview state inside Agency View
   const [isNewPartnerModalOpen, setIsNewPartnerModalOpen] = useState(false);
+  const [isNewConstrutoraModalOpen, setIsNewConstrutoraModalOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<PartnerProfile | null>(null);
   const [inspectingPartner, setInspectingPartner] = useState<PartnerProfile | null>(null);
 
@@ -424,6 +435,87 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
           {isNewPartnerModalOpen && (
             <PartnerRegisterModal onClose={() => setIsNewPartnerModalOpen(false)} />
+          )}
+
+          {editingPartner && (
+            <PartnerRegisterModal
+              partnerToEdit={editingPartner}
+              onClose={() => setEditingPartner(null)}
+            />
+          )}
+        </div>
+      ) : !currentUser?.isAgencyUser && agencyActiveView === 'construtoras' ? (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3.5 pt-1">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Construtoras
+              </h2>
+              <p className="text-sm text-slate-400 mt-1 w-full leading-relaxed">
+                Gerencie as construtoras cadastradas no ecossistema da agência.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setAgencyActiveView('schedule')}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Voltar para Agenda
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsNewConstrutoraModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/25 transition-all cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Nova Construtora
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5">
+            {sortedConstrutoras.map((construtora) => {
+              const isAllowed =
+                Array.isArray(construtora.allowedAgencyIds) &&
+                construtora.allowedAgencyIds.includes(activeAgencyId);
+
+              return (
+                <div
+                  key={construtora.id}
+                  onClick={() => setEditingPartner(construtora)}
+                  className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isAllowed}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => togglePartnerAgencyAccess(construtora.id, activeAgencyId)}
+                      title={
+                        isAllowed
+                          ? 'Construtora habilitada para visualizar a agenda desta agência'
+                          : 'Marque para permitir que esta construtora visualize a agenda desta agência'
+                      }
+                      className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
+                    />
+                    <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
+                      {construtora.name}
+                    </h4>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {isNewConstrutoraModalOpen && (
+            <PartnerRegisterModal
+              initialSegment="Construtora"
+              onClose={() => setIsNewConstrutoraModalOpen(false)}
+            />
           )}
 
           {editingPartner && (

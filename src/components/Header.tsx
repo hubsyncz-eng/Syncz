@@ -22,6 +22,8 @@ export const Header: React.FC<HeaderProps> = () => {
     setAdminPerspective,
     agencyActiveView,
     setAgencyActiveView,
+    construtoraActiveView,
+    setConstrutoraActiveView,
     theme,
     toggleTheme,
     agencies,
@@ -43,7 +45,11 @@ export const Header: React.FC<HeaderProps> = () => {
     currentUser?.role === 'partner' ||
     (currentUser?.role === 'admin' && adminPerspective === 'partner_view');
 
-  const hasSideMenu = isAgencyView || isPartnerView;
+  const isConstrutoraView =
+    currentUser?.role === 'construtora' ||
+    (currentUser?.role === 'admin' && adminPerspective === 'construtora_view');
+
+  const hasSideMenu = isAgencyView || isPartnerView || isConstrutoraView;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -84,7 +90,9 @@ export const Header: React.FC<HeaderProps> = () => {
                   ? 'Abrir menu de opções da agência'
                   : isPartnerView
                     ? 'Abrir menu de opções do parceiro'
-                    : 'Syncz'
+                    : isConstrutoraView
+                      ? 'Abrir menu de opções da construtora'
+                      : 'Syncz'
               }
               className={`syncz-header-logo-box w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/15 via-blue-500/15 to-indigo-500/15 border border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/10 transition-all ${
                 hasSideMenu
@@ -127,9 +135,12 @@ export const Header: React.FC<HeaderProps> = () => {
                 if (isAgencyView) {
                   setAgencyActiveView('schedule');
                   setIsMenuOpen(false);
+                } else if (isConstrutoraView) {
+                  setConstrutoraActiveView('schedule');
+                  setIsMenuOpen(false);
                 }
               }}
-              className={isAgencyView ? 'cursor-pointer' : ''}
+              className={isAgencyView || isConstrutoraView ? 'cursor-pointer' : ''}
             >
               <h1 className="syncz-brand-title font-extrabold text-xl sm:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
                 Syncz
@@ -173,6 +184,24 @@ export const Header: React.FC<HeaderProps> = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        setAgencyActiveView(
+                          agencyActiveView === 'construtoras' ? 'schedule' : 'construtoras'
+                        );
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                        agencyActiveView === 'construtoras'
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Construtoras</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
                         setAgencyActiveView(agencyActiveView === 'users' ? 'schedule' : 'users');
                         setIsMenuOpen(false);
                       }}
@@ -204,20 +233,43 @@ export const Header: React.FC<HeaderProps> = () => {
                   </button>
                 )}
 
-                {/* If viewing as Admin, allow quick return to Master Dashboard */}
-                {currentUser?.role === 'admin' && (adminPerspective === 'agency_view' || adminPerspective === 'partner_view') && (
+                {isConstrutoraView && (
                   <button
                     type="button"
                     onClick={() => {
-                      setAdminPerspective('admin_master');
+                      setConstrutoraActiveView(
+                        construtoraActiveView === 'partners' ? 'schedule' : 'partners'
+                      );
                       setIsMenuOpen(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-purple-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                      construtoraActiveView === 'partners'
+                        ? 'bg-cyan-500/20 text-cyan-300'
+                        : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                    }`}
                   >
-                    <Shield className="w-4 h-4 text-purple-400 shrink-0" />
-                    <span>Voltar ao Painel Master</span>
+                    <Users className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>Parceiros</span>
                   </button>
                 )}
+
+                {/* If viewing as Admin, allow quick return to Master Dashboard */}
+                {currentUser?.role === 'admin' &&
+                  (adminPerspective === 'agency_view' ||
+                    adminPerspective === 'partner_view' ||
+                    adminPerspective === 'construtora_view') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminPerspective('admin_master');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-purple-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Shield className="w-4 h-4 text-purple-400 shrink-0" />
+                      <span>Voltar ao Painel Master</span>
+                    </button>
+                  )}
 
                 <button
                   type="button"

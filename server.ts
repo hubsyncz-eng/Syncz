@@ -336,13 +336,15 @@ app.post('/api/auth/login', (req, res) => {
     const validPartnerPass = partner.password || 'parceiro123';
     if (cleanPass !== validPartnerPass) {
       return res.status(401).json({
-        error: 'Senha incorreta para o parceiro informado.',
+        error: 'Senha incorreta para o acesso informado.',
       });
     }
+    const isConstrutoraProfile =
+      partner.segment?.toLowerCase() === 'construtora' || role === 'construtora';
     return res.json({
       success: true,
       session: {
-        role: 'partner',
+        role: isConstrutoraProfile ? 'construtora' : 'partner',
         id: partner.id,
         name: partner.name,
         email: partner.email,
@@ -350,6 +352,23 @@ app.post('/api/auth/login', (req, res) => {
         representative: partner.representative,
         cnpj: partner.cnpj,
         badgeColor: partner.badgeColor,
+      },
+    });
+  }
+
+  if (lowerUser === 'construtora') {
+    if (cleanPass !== 'construtora123' && cleanPass !== '@dmin') {
+      return res.status(401).json({
+        error: 'Senha incorreta para Construtora.',
+      });
+    }
+    return res.json({
+      success: true,
+      session: {
+        role: 'construtora',
+        id: 'construtora_view_user',
+        name: 'Construtora',
+        email: 'construtora@syncz.com.br',
       },
     });
   }
@@ -457,7 +476,7 @@ app.delete('/api/agencies/:id', (req, res) => {
 
 // Admin or partner registers a new Partner
 app.post('/api/partners', (req, res) => {
-  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds } = req.body;
+  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds, allowedConstrutoraIds } = req.body;
 
   if (!name || !representative || !email) {
     return res.status(400).json({ error: 'Preencha os campos obrigatórios do parceiro.' });
@@ -475,6 +494,7 @@ app.post('/api/partners', (req, res) => {
     badgeColor: colors[Math.floor(Math.random() * colors.length)],
     password: password || 'parceiro123',
     allowedAgencyIds: Array.isArray(allowedAgencyIds) ? allowedAgencyIds : [],
+    allowedConstrutoraIds: Array.isArray(allowedConstrutoraIds) ? allowedConstrutoraIds : [],
     createdAt: new Date().toISOString(),
   };
 
@@ -492,7 +512,7 @@ app.post('/api/partners', (req, res) => {
 // Admin or partner updates an existing Partner
 app.put('/api/partners/:id', (req, res) => {
   const { id } = req.params;
-  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds } = req.body;
+  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds, allowedConstrutoraIds } = req.body;
 
   const idx = partners.findIndex((p) => p.id === id);
   if (idx === -1) {
@@ -515,6 +535,9 @@ app.put('/api/partners/:id', (req, res) => {
     allowedAgencyIds: Array.isArray(allowedAgencyIds)
       ? allowedAgencyIds
       : partners[idx].allowedAgencyIds || [],
+    allowedConstrutoraIds: Array.isArray(allowedConstrutoraIds)
+      ? allowedConstrutoraIds
+      : partners[idx].allowedConstrutoraIds || [],
   };
 
   partners[idx] = updatedPartner;
@@ -887,6 +910,8 @@ app.post('/api/bookings', (req, res) => {
     clientName,
     clientCpf,
     propertyType,
+    construtoraId,
+    construtoraName,
     fidelizacaoValor,
     fidelizacaoResponsavel,
     isConstrutora,
@@ -943,9 +968,18 @@ app.post('/api/bookings', (req, res) => {
     clientName,
     clientCpf,
     propertyType: finalPropertyType,
+    ...(finalPropertyType === 'Empreendimento' && construtoraId
+      ? { construtoraId }
+      : {}),
+    ...(finalPropertyType === 'Empreendimento' && construtoraName
+      ? { construtoraName }
+      : {}),
     fidelizacaoValor: fidelizacaoValor || '',
     fidelizacaoResponsavel: fidelizacaoResponsavel || undefined,
-    isConstrutora: fidelizacaoResponsavel === 'Construtora' || Boolean(isConstrutora),
+    isConstrutora:
+      fidelizacaoResponsavel === 'Construtora' ||
+      Boolean(construtoraId) ||
+      Boolean(isConstrutora),
     agendaTopic: finalAgendaTopic,
     dealEstimate,
     additionalAttendees,
@@ -978,13 +1012,15 @@ app.post('/api/bookings', (req, res) => {
   });
 });
 
-// Update booking fields (Cliente, CPF, Imóvel/Empreendimento, Parceiro, Notas, Outcome)
+// Update booking fields (Cliente, CPF, Imóvel/Empreendimento, Construtora, Parceiro, Notas, Outcome)
 app.patch('/api/bookings/:id', async (req, res) => {
   const { id } = req.params;
   const {
     clientName,
     clientCpf,
     propertyType,
+    construtoraId,
+    construtoraName,
     fidelizacaoValor,
     fidelizacaoResponsavel,
     isConstrutora,
@@ -1007,6 +1043,25 @@ app.patch('/api/bookings/:id', async (req, res) => {
   if (clientName) booking.clientName = clientName;
   if (clientCpf) booking.clientCpf = clientCpf;
   if (propertyType) booking.propertyType = propertyType;
+  if (booking.propertyType !== 'Empreendimento') {
+    delete booking.construtoraId;
+    delete booking.construtoraName;
+  } else {
+    if (construtoraId !== undefined) {
+      if (construtoraId) {
+        booking.construtoraId = construtoraId;
+      } else {
+        delete booking.construtoraId;
+      }
+    }
+    if (construtoraName !== undefined) {
+      if (construtoraName) {
+        booking.construtoraName = construtoraName;
+      } else {
+        delete booking.construtoraName;
+      }
+    }
+  }
   if (fidelizacaoValor !== undefined) booking.fidelizacaoValor = fidelizacaoValor;
   if (fidelizacaoResponsavel !== undefined) {
     if (fidelizacaoResponsavel) {

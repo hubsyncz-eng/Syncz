@@ -1,7 +1,7 @@
 export type SlotModality = 'online' | 'presencial' | 'hibrido';
 export type SlotStatus = 'available' | 'locked' | 'booked';
 export type BookingStatus = 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-export type UserRole = 'admin' | 'agency' | 'partner';
+export type UserRole = 'admin' | 'agency' | 'partner' | 'construtora';
 
 export interface Agency {
   id: string;
@@ -92,6 +92,8 @@ export interface Booking {
   clientName?: string;
   clientCpf?: string;
   propertyType?: PropertyType;
+  construtoraId?: string;
+  construtoraName?: string;
   fidelizacaoValor?: string;
   fidelizacaoResponsavel?: FidelizacaoResponsavel;
   isConstrutora?: boolean;
@@ -120,6 +122,7 @@ export interface PartnerProfile {
   username?: string;
   password?: string;
   allowedAgencyIds?: string[];
+  allowedConstrutoraIds?: string[];
   createdAt?: string;
 }
 

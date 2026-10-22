@@ -25,6 +25,7 @@ const MainLayout: React.FC = () => {
   // Modals state
   const [isAgencyRegisterModalOpen, setIsAgencyRegisterModalOpen] = useState(false);
   const [isPartnerRegisterModalOpen, setIsPartnerRegisterModalOpen] = useState(false);
+  const [partnerRegisterSegment, setPartnerRegisterSegment] = useState<'Parceiro Negocial' | 'Construtora'>('Parceiro Negocial');
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isSingleSlotModalOpen, setIsSingleSlotModalOpen] = useState(false);
   const [bookingModalData, setBookingModalData] = useState<{ slot: TimeSlot; booking?: Booking } | null>(null);
@@ -46,7 +47,14 @@ const MainLayout: React.FC = () => {
         ) : currentUser.role === 'admin' ? (
           <AdminDashboard
             onOpenAgencyRegisterModal={() => setIsAgencyRegisterModalOpen(true)}
-            onOpenPartnerRegisterModal={() => setIsPartnerRegisterModalOpen(true)}
+            onOpenPartnerRegisterModal={() => {
+              setPartnerRegisterSegment('Parceiro Negocial');
+              setIsPartnerRegisterModalOpen(true);
+            }}
+            onOpenConstrutoraRegisterModal={() => {
+              setPartnerRegisterSegment('Construtora');
+              setIsPartnerRegisterModalOpen(true);
+            }}
             onOpenBatchModal={() => setIsBatchModalOpen(true)}
             onOpenSingleSlotModal={() => setIsSingleSlotModalOpen(true)}
             onBookSlot={(slot, booking) => setBookingModalData({ slot, booking })}
@@ -57,6 +65,8 @@ const MainLayout: React.FC = () => {
             onOpenSingleSlotModal={() => setIsSingleSlotModalOpen(true)}
             onBookSlot={(slot, booking) => setBookingModalData({ slot, booking })}
           />
+        ) : currentUser.role === 'construtora' ? (
+          <PartnerView isConstrutoraView />
         ) : (
           <PartnerView
             onBookSlot={(slot, booking) => setBookingModalData({ slot, booking })}
@@ -96,6 +106,7 @@ const MainLayout: React.FC = () => {
       {(isPartnerRegisterModalOpen || editingPartnerModal.isOpen) && (
         <PartnerRegisterModal
           partnerToEdit={editingPartnerModal.partner || null}
+          initialSegment={partnerRegisterSegment}
           onClose={() => {
             setIsPartnerRegisterModalOpen(false);
             closePartnerModal();

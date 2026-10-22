@@ -34,14 +34,17 @@ import {
   Building2,
   FileText,
   Edit3,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface PartnerViewProps {
-  onBookSlot: (slot: TimeSlot, booking?: Booking) => void;
+  onBookSlot?: (slot: TimeSlot, booking?: Booking) => void;
+  isConstrutoraView?: boolean;
 }
 
 export const PartnerView: React.FC<PartnerViewProps> = ({
   onBookSlot,
+  isConstrutoraView = false,
 }) => {
   const {
     agencies,
@@ -50,6 +53,10 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     consultants,
     currentPartner,
     currentUser,
+    adminPerspective,
+    construtoraActiveView,
+    setConstrutoraActiveView,
+    togglePartnerConstrutoraAccess,
     partners,
     setCurrentAgency,
     setCurrentPartner,
@@ -57,43 +64,83 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     openPartnerModal,
   } = useRealtime();
 
-  const partnerId = currentUser?.role === 'partner'
-    ? (currentUser.partnerId || currentUser.id)
-    : currentPartner?.id;
+  const isConstrutora = Boolean(
+    isConstrutoraView ||
+      currentUser?.role === 'construtora' ||
+      (currentUser?.role === 'admin' && adminPerspective === 'construtora_view')
+  );
+
+  const partnerId =
+    currentUser?.role === 'partner' || currentUser?.role === 'construtora'
+      ? currentUser.partnerId || currentUser.id
+      : currentPartner?.id;
 
   const partnerFromList = partners.find((p) => p.id === partnerId);
+  const regularPartnerFromList =
+    partnerFromList && partnerFromList.segment?.toLowerCase() !== 'construtora'
+      ? partnerFromList
+      : partners.find((p) => p.segment?.toLowerCase() !== 'construtora');
+  const construtoraFromList =
+    partnerFromList && partnerFromList.segment?.toLowerCase() === 'construtora'
+      ? partnerFromList
+      : partners.find((p) => p.segment?.toLowerCase() === 'construtora');
 
-  const activePartner = partnerFromList || (
-    currentUser?.role === 'partner'
-      ? {
-          id: currentUser.partnerId || currentUser.id,
-          name: currentUser.name,
-          representative: currentUser.representative || currentUser.name,
-          email: currentUser.email,
-          phone: '',
-          cnpj: currentUser.cnpj || '',
-          badgeColor: currentUser.badgeColor || 'bg-emerald-500',
-          segment: 'Negócios Corporativos',
-          password: 'parceiro123',
-        }
-      : (currentPartner || {
-          id: 'p1',
-          name: 'Empresa Parceira',
-          representative: 'Representante',
-          email: '',
-          phone: '',
-          cnpj: '',
-          badgeColor: 'bg-emerald-500',
-          segment: 'Parceiro',
-          password: 'parceiro123',
-        })
-  );
+  const activePartner = isConstrutora
+    ? construtoraFromList ||
+      (currentUser?.role === 'construtora'
+        ? {
+            id: currentUser.partnerId || currentUser.id,
+            name: currentUser.name || 'Construtora',
+            representative: currentUser.representative || currentUser.name || 'Construtora',
+            email: currentUser.email || '',
+            phone: '',
+            cnpj: currentUser.cnpj || '',
+            badgeColor: currentUser.badgeColor || 'bg-amber-500',
+            segment: 'Construtora',
+            password: 'construtora123',
+          }
+        : {
+            id: 'construtora_default',
+            name: 'Construtora',
+            representative: 'Construtora',
+            email: '',
+            phone: '',
+            cnpj: '',
+            badgeColor: 'bg-amber-500',
+            segment: 'Construtora',
+            password: 'construtora123',
+            allowedAgencyIds: [],
+          })
+    : regularPartnerFromList ||
+      (currentUser?.role === 'partner'
+        ? {
+            id: currentUser.partnerId || currentUser.id,
+            name: currentUser.name,
+            representative: currentUser.representative || currentUser.name,
+            email: currentUser.email,
+            phone: '',
+            cnpj: currentUser.cnpj || '',
+            badgeColor: currentUser.badgeColor || 'bg-emerald-500',
+            segment: 'Negócios Corporativos',
+            password: 'parceiro123',
+          }
+        : {
+            id: 'p1',
+            name: 'Empresa Parceira',
+            representative: 'Representante',
+            email: '',
+            phone: '',
+            cnpj: '',
+            badgeColor: 'bg-emerald-500',
+            segment: 'Parceiro',
+            password: 'parceiro123',
+          });
 
   const [activeTab, setActiveTab] = useState<'available_slots' | 'my_bookings'>('available_slots');
   const [selectedAgencyId, setSelectedAgencyId] = useState<string>('');
   const [weekOffset, setWeekOffset] = useState(0);
 
-  // Only agencies that have selected/authorized this partner can be accessed for scheduling
+  // Only agencies that have selected/authorized this partner or construtora can be accessed
   const allowedAgencies = useMemo(() => {
     const allowedIds = Array.isArray(activePartner.allowedAgencyIds)
       ? activePartner.allowedAgencyIds
@@ -183,7 +230,16 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
       }
       if (slot.status === 'booked') {
         const b = bookings.find((bk) => bk.id === slot.bookingId && bk.status !== 'cancelled');
-        return b ? b.partnerId === activePartner.id : false;
+        if (!b) return false;
+        if (isConstrutora) {
+          return (
+            b.partnerId === activePartner.id ||
+            b.construtoraId === activePartner.id ||
+            (!b.construtoraId &&
+              (b.fidelizacaoResponsavel === 'Construtora' || Boolean(b.isConstrutora)))
+          );
+        }
+        return b.partnerId === activePartner.id;
       }
       return false;
     });
@@ -191,6 +247,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     slots,
     bookings,
     activePartner.id,
+    isConstrutora,
     weekDateSet,
     selectedAgencyId,
     isSelectedAgencyAllowed,
@@ -217,10 +274,22 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     ).length;
   }, [slots, weekDateSet, todayIso, selectedAgencyId, isSelectedAgencyAllowed]);
 
-  // Partner's own bookings ordered by date and time
+  // Partner's / Construtora's bookings ordered by date and time
   const myBookings = useMemo(() => {
     return bookings
-      .filter((b) => b.partnerId === activePartner.id && b.status === 'confirmed')
+      .filter((b) => {
+        if (b.status !== 'confirmed') return false;
+        if (isConstrutora) {
+          if (selectedAgencyId && b.agencyId !== selectedAgencyId) return false;
+          return (
+            b.partnerId === activePartner.id ||
+            b.construtoraId === activePartner.id ||
+            (!b.construtoraId &&
+              (b.fidelizacaoResponsavel === 'Construtora' || Boolean(b.isConstrutora)))
+          );
+        }
+        return b.partnerId === activePartner.id;
+      })
       .sort((a, b) => {
         const slotA = slots.find((sl) => sl.id === a.slotId);
         const slotB = slots.find((sl) => sl.id === b.slotId);
@@ -231,7 +300,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
         const timeB = slotB?.startTime || b.slotStartTime || '';
         return timeA.localeCompare(timeB);
       });
-  }, [bookings, slots, activePartner.id]);
+  }, [bookings, slots, activePartner.id, isConstrutora, selectedAgencyId]);
 
   // Group all week visible slots by date (to filter out days with no schedule)
   const allWeekSlotsByDate = useMemo(() => {
@@ -268,6 +337,14 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     return map;
   }, [filteredSlots, weekDays]);
 
+  const sortedPartners = useMemo(() => {
+    return [...partners]
+      .filter((p) => p.segment?.toLowerCase() !== 'construtora')
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+      );
+  }, [partners]);
+
   const handleConfirmCancel = async () => {
     if (!cancellingBookingId) return;
     await cancelBooking(cancellingBookingId, 'Cancelado pelo parceiro negocial');
@@ -275,54 +352,101 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   };
 
   const handlePartnerBookSlot = (slot: TimeSlot, booking?: Booking) => {
+    if (isConstrutora) return;
     // Only allow new booking inclusions starting from the next day (block past days and today)
     if (!booking && slot.date <= todayIso) {
       return;
     }
-    onBookSlot(slot, booking);
+    if (onBookSlot) onBookSlot(slot, booking);
   };
 
-  const handleOpenBookingEdit = (b: Booking) => {
-    const s = slots.find((sl) => sl.id === b.slotId) || {
-      id: b.slotId,
-      agencyId: b.agencyId,
-      date: b.slotDate,
-      startTime: b.slotStartTime,
-      endTime: b.slotEndTime,
-      durationMinutes: 60,
-      consultantId: 'c1',
-      consultantName: b.consultantName,
-      consultantRole: 'Consultor',
-      serviceCategory: b.serviceCategory,
-      modality: b.modality,
-      locationOrLink: b.locationOrLink,
-      status: 'booked' as const,
-      createdAt: new Date().toISOString(),
-    };
-    onBookSlot(s, b);
-  };
+  if (isConstrutora && construtoraActiveView === 'partners') {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3.5 pt-1">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Parceiros Negociais
+            </h2>
+            <p className="text-sm text-slate-400 mt-1 w-full leading-relaxed">
+              Gerencie os parceiros cadastrados no ecossistema da construtora.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setConstrutoraActiveView('schedule')}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar para Agenda
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2.5">
+          {sortedPartners.map((partner) => {
+            const isAllowed =
+              Array.isArray(partner.allowedConstrutoraIds) &&
+              partner.allowedConstrutoraIds.includes(activePartner.id);
+
+            return (
+              <div
+                key={partner.id}
+                onClick={() => togglePartnerConstrutoraAccess(partner.id, activePartner.id)}
+                className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={isAllowed}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => togglePartnerConstrutoraAccess(partner.id, activePartner.id)}
+                    title={
+                      isAllowed
+                        ? 'Parceiro habilitado para esta construtora'
+                        : 'Marque para permitir que este parceiro selecione esta construtora nos agendamentos'
+                    }
+                    className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
+                  />
+                  <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-emerald-300 transition-colors">
+                    {partner.name}
+                  </h4>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       
-      {/* Partner Header - Directly on background */}
+      {/* Partner / Construtora Header - Directly on background */}
       <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Olá, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">{activePartner.name}</span>
             </h2>
-            <button
-              type="button"
-              onClick={() => openPartnerModal(activePartner)}
-              title="Editar Meus Dados Cadastrais"
-              className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 transition-all cursor-pointer shadow-sm"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
+            {!isConstrutora && (
+              <button
+                type="button"
+                onClick={() => openPartnerModal(activePartner)}
+                title="Editar Meus Dados Cadastrais"
+                className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 transition-all cursor-pointer shadow-sm"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <p className="text-sm text-slate-400 mt-1.5 w-full leading-relaxed">
-            Gerencie os horários disponíveis para negociações da semana.
+            {isConstrutora
+              ? 'Visualize as agendas e os horários da semana.'
+              : 'Gerencie os horários disponíveis para negociações da semana.'}
           </p>
         </div>
       </div>
@@ -544,8 +668,9 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                             key={slot.id}
                             slot={slot}
                             booking={booking}
-                            onBookSlot={handlePartnerBookSlot}
-                            isPartnerView
+                            onBookSlot={isConstrutora ? undefined : handlePartnerBookSlot}
+                            isPartnerView={!isConstrutora}
+                            isConstrutoraView={isConstrutora}
                           />
                         );
                       })}
@@ -568,7 +693,9 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                 Nenhum agendamento ativo para {activePartner.name}
               </h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
-                Explore a aba de horários da semana e clique em um horário aberto para preencher os dados do agendamento com confirmação automática imediata.
+                {isConstrutora
+                  ? 'Consulte a aba de horários da semana para visualizar a agenda.'
+                  : 'Explore a aba de horários da semana e clique em um horário aberto para preencher os dados do agendamento com confirmação automática imediata.'}
               </p>
               <button
                 type="button"
@@ -604,8 +731,9 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                     key={b.id}
                     slot={slot}
                     booking={b}
-                    onBookSlot={handlePartnerBookSlot}
-                    isPartnerView
+                    onBookSlot={isConstrutora ? undefined : handlePartnerBookSlot}
+                    isPartnerView={!isConstrutora}
+                    isConstrutoraView={isConstrutora}
                   />
                 );
               })}

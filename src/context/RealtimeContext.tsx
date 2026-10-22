@@ -52,16 +52,20 @@ interface RealtimeContextValue {
   setCurrentAgency: (agency: Agency) => void;
   currentPartner: PartnerProfile | null;
   setCurrentPartner: (partner: PartnerProfile) => void;
-  selectedLoginRole: 'admin' | 'agency' | 'partner';
-  setSelectedLoginRole: (role: 'admin' | 'agency' | 'partner') => void;
-  adminPerspective: 'admin_master' | 'agency_view' | 'partner_view';
-  setAdminPerspective: (perspective: 'admin_master' | 'agency_view' | 'partner_view') => void;
-  agencyActiveView: 'schedule' | 'partners' | 'users';
-  setAgencyActiveView: (view: 'schedule' | 'partners' | 'users') => void;
+  selectedLoginRole: 'admin' | 'agency' | 'partner' | 'construtora';
+  setSelectedLoginRole: (role: 'admin' | 'agency' | 'partner' | 'construtora') => void;
+  adminPerspective: 'admin_master' | 'agency_view' | 'partner_view' | 'construtora_view';
+  setAdminPerspective: (
+    perspective: 'admin_master' | 'agency_view' | 'partner_view' | 'construtora_view'
+  ) => void;
+  agencyActiveView: 'schedule' | 'partners' | 'construtoras' | 'users';
+  setAgencyActiveView: (view: 'schedule' | 'partners' | 'construtoras' | 'users') => void;
+  construtoraActiveView: 'schedule' | 'partners';
+  setConstrutoraActiveView: (view: 'schedule' | 'partners') => void;
   loginWithCredentials: (
     username: string,
     password: string,
-    role?: 'admin' | 'agency' | 'partner'
+    role?: 'admin' | 'agency' | 'partner' | 'construtora'
   ) => Promise<UserSession>;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
@@ -81,6 +85,7 @@ interface RealtimeContextValue {
   registerPartner: (data: Partial<PartnerProfile>) => Promise<PartnerProfile>;
   updatePartner: (id: string, data: Partial<PartnerProfile>) => Promise<PartnerProfile>;
   togglePartnerAgencyAccess: (partnerId: string, agencyId: string) => Promise<void>;
+  togglePartnerConstrutoraAccess: (partnerId: string, construtoraId: string) => Promise<void>;
   deletePartner: (id: string) => Promise<boolean>;
   registerConsultant: (data: Partial<Consultant>) => Promise<Consultant>;
   updateConsultant: (id: string, data: Partial<Consultant>) => Promise<Consultant>;
@@ -96,6 +101,8 @@ interface RealtimeContextValue {
     clientName?: string;
     clientCpf?: string;
     propertyType?: PropertyType;
+    construtoraId?: string;
+    construtoraName?: string;
     fidelizacaoValor?: string;
     fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
     isConstrutora?: boolean;
@@ -110,6 +117,8 @@ interface RealtimeContextValue {
       clientName: string;
       clientCpf: string;
       propertyType: PropertyType;
+      construtoraId?: string;
+      construtoraName?: string;
       fidelizacaoValor?: string;
       fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
       isConstrutora?: boolean;
@@ -172,7 +181,7 @@ async function safeFetchJson(
 function authenticateLocally(
   username: string,
   password: string,
-  role: 'admin' | 'agency' | 'partner' | undefined,
+  role: 'admin' | 'agency' | 'partner' | 'construtora' | undefined,
   agencies: Agency[],
   consultants: Consultant[],
   partners: PartnerProfile[]
@@ -250,7 +259,7 @@ function authenticateLocally(
     };
   }
 
-  // 3. Parceiro Negocial: Login com E-mail, CNPJ, Nome, Representante, ID ou Username
+  // 3. Parceiro Negocial / Construtora: Login com E-mail, CNPJ, Nome, Representante, ID ou Username
   const partner = partners.find(
     (p) =>
       (p.email && p.email.toLowerCase() === lowerUser) ||
@@ -264,10 +273,12 @@ function authenticateLocally(
   if (partner) {
     const validPartnerPass = partner.password || 'parceiro123';
     if (cleanPass !== validPartnerPass) {
-      throw new Error('Senha incorreta para o parceiro informado.');
+      throw new Error('Senha incorreta para o acesso informado.');
     }
+    const isConstrutoraProfile =
+      partner.segment?.toLowerCase() === 'construtora' || role === 'construtora';
     return {
-      role: 'partner',
+      role: isConstrutoraProfile ? 'construtora' : 'partner',
       id: partner.id,
       name: partner.name,
       email: partner.email,
@@ -275,6 +286,19 @@ function authenticateLocally(
       representative: partner.representative,
       cnpj: partner.cnpj,
       badgeColor: partner.badgeColor,
+    };
+  }
+
+  // 4. Acesso direto Visão Construtora padrão: Usuário: construtora | Senha: construtora123
+  if (lowerUser === 'construtora') {
+    if (cleanPass !== 'construtora123' && cleanPass !== '@dmin') {
+      throw new Error('Senha incorreta para Construtora.');
+    }
+    return {
+      role: 'construtora',
+      id: 'construtora_view_user',
+      name: 'Construtora',
+      email: 'construtora@syncz.com.br',
     };
   }
 
@@ -336,15 +360,22 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentPartner, setCurrentPartner] = useState<PartnerProfile | null>(null);
 
   // Active role selected in login screen
-  const [selectedLoginRole, setSelectedLoginRole] = useState<'admin' | 'agency' | 'partner'>('admin');
+  const [selectedLoginRole, setSelectedLoginRole] = useState<
+    'admin' | 'agency' | 'partner' | 'construtora'
+  >('admin');
 
-  // Perspective for administrator ('admin_master' | 'agency_view' | 'partner_view')
+  // Perspective for administrator ('admin_master' | 'agency_view' | 'partner_view' | 'construtora_view')
   const [adminPerspective, setAdminPerspective] = useState<
-    'admin_master' | 'agency_view' | 'partner_view'
+    'admin_master' | 'agency_view' | 'partner_view' | 'construtora_view'
   >('admin_master');
 
-  // Active sub-view inside Agency perspective ('schedule' | 'partners' | 'users')
-  const [agencyActiveView, setAgencyActiveView] = useState<'schedule' | 'partners' | 'users'>(
+  // Active sub-view inside Agency perspective ('schedule' | 'partners' | 'construtoras' | 'users')
+  const [agencyActiveView, setAgencyActiveView] = useState<
+    'schedule' | 'partners' | 'construtoras' | 'users'
+  >('schedule');
+
+  // Active sub-view inside Construtora perspective ('schedule' | 'partners')
+  const [construtoraActiveView, setConstrutoraActiveView] = useState<'schedule' | 'partners'>(
     'schedule'
   );
 
@@ -396,10 +427,14 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const login = (session: UserSession) => {
     setCurrentUser(session);
     setAgencyActiveView('schedule');
+    setConstrutoraActiveView('schedule');
     if (session.role === 'agency' && session.agencyId) {
       const foundAg = agencies.find((a) => a.id === session.agencyId);
       if (foundAg) setCurrentAgency(foundAg);
-    } else if (session.role === 'partner' && (session.partnerId || session.id)) {
+    } else if (
+      (session.role === 'partner' || session.role === 'construtora') &&
+      (session.partnerId || session.id)
+    ) {
       const foundPt = partners.find((p) => p.id === (session.partnerId || session.id));
       if (foundPt) setCurrentPartner(foundPt);
     }
@@ -412,6 +447,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCurrentUser(null);
     setAdminPerspective('admin_master');
     setAgencyActiveView('schedule');
+    setConstrutoraActiveView('schedule');
     try {
       localStorage.removeItem(STORAGE_KEY_SESSION);
     } catch {}
@@ -463,12 +499,16 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return updated || partners[0];
       });
       setCurrentUser((prevUser) => {
-        if (!prevUser || prevUser.role !== 'partner') return prevUser;
+        if (!prevUser || (prevUser.role !== 'partner' && prevUser.role !== 'construtora'))
+          return prevUser;
         const matched = partners.find(
           (p) => p.id === prevUser.id || p.id === prevUser.partnerId
         );
         if (!matched) return prevUser;
+        const nextRole =
+          matched.segment?.toLowerCase() === 'construtora' ? 'construtora' : 'partner';
         if (
+          prevUser.role === nextRole &&
           prevUser.name === matched.name &&
           prevUser.email === matched.email &&
           prevUser.representative === matched.representative &&
@@ -478,6 +518,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         const updatedSession: UserSession = {
           ...prevUser,
+          role: nextRole,
           name: matched.name,
           email: matched.email,
           representative: matched.representative || prevUser.representative,
@@ -495,7 +536,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const loginWithCredentials = async (
     username: string,
     password: string,
-    role?: 'admin' | 'agency' | 'partner'
+    role?: 'admin' | 'agency' | 'partner' | 'construtora'
   ): Promise<UserSession> => {
     // 1. Always fetch latest definitive entities from Firestore if available
     let latestAgencies = agencies;
@@ -871,6 +912,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (adminPerspective === 'partner_view' && currentPartner) {
         return `Master (Parceiro ${currentPartner.name})`;
       }
+      if (adminPerspective === 'construtora_view') {
+        return 'Master (Visão Construtora)';
+      }
       return 'Master';
     }
     if (currentUser.role === 'agency') {
@@ -882,6 +926,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     if (currentUser.role === 'partner') {
       return currentUser.name || 'Parceiro';
+    }
+    if (currentUser.role === 'construtora') {
+      return currentUser.name || 'Construtora';
     }
     return currentUser.name || 'Usuário';
   };
@@ -1098,12 +1145,21 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         badgeColor: colors[Math.floor(Math.random() * colors.length)],
         password: data.password || 'parceiro123',
         allowedAgencyIds: Array.isArray(data.allowedAgencyIds) ? data.allowedAgencyIds : [],
+        allowedConstrutoraIds: Array.isArray(data.allowedConstrutoraIds)
+          ? data.allowedConstrutoraIds
+          : [],
         createdAt: new Date().toISOString(),
       };
     }
 
     if (Array.isArray(data.allowedAgencyIds) && !Array.isArray(createdPartner.allowedAgencyIds)) {
       createdPartner.allowedAgencyIds = data.allowedAgencyIds;
+    }
+    if (
+      Array.isArray(data.allowedConstrutoraIds) &&
+      !Array.isArray(createdPartner.allowedConstrutoraIds)
+    ) {
+      createdPartner.allowedConstrutoraIds = data.allowedConstrutoraIds;
     }
 
     await persistToFirestore('partners', createdPartner.id, createdPartner);
@@ -1141,6 +1197,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : Array.isArray(apiRes.data.allowedAgencyIds)
             ? apiRes.data.allowedAgencyIds
             : existing?.allowedAgencyIds || [],
+        allowedConstrutoraIds: Array.isArray(data.allowedConstrutoraIds)
+          ? data.allowedConstrutoraIds
+          : Array.isArray(apiRes.data.allowedConstrutoraIds)
+            ? apiRes.data.allowedConstrutoraIds
+            : existing?.allowedConstrutoraIds || [],
       };
     } else {
       if (!existing) throw new Error('Parceiro não encontrado.');
@@ -1159,6 +1220,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         allowedAgencyIds: Array.isArray(data.allowedAgencyIds)
           ? data.allowedAgencyIds
           : existing.allowedAgencyIds || [],
+        allowedConstrutoraIds: Array.isArray(data.allowedConstrutoraIds)
+          ? data.allowedConstrutoraIds
+          : existing.allowedConstrutoraIds || [],
       };
     }
 
@@ -1243,10 +1307,49 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await persistToFirestore('partners', updatedPartner.id, updatedPartner);
 
     const targetAg = agencies.find((a) => a.id === agencyId);
+    const isConstrutoraEntity = existing.segment?.toLowerCase() === 'construtora';
     await recordAuditActivity(
       'partner_updated',
-      `${isCurrentlyAllowed ? 'Remoção' : 'Liberação'} de acesso do parceiro ${existing.name} na agência ${targetAg?.name || agencyId}`,
+      `${isCurrentlyAllowed ? 'Remoção' : 'Liberação'} de acesso ${isConstrutoraEntity ? 'da construtora' : 'do parceiro'} ${existing.name} na agência ${targetAg?.name || agencyId}`,
       { partnerName: existing.name, agencyName: targetAg?.name }
+    );
+  };
+
+  const togglePartnerConstrutoraAccess = async (
+    partnerId: string,
+    construtoraId: string
+  ): Promise<void> => {
+    const existing = partners.find((p) => p.id === partnerId);
+    if (!existing || !construtoraId) return;
+
+    const currentIds = Array.isArray(existing.allowedConstrutoraIds)
+      ? existing.allowedConstrutoraIds
+      : [];
+    const isCurrentlyAllowed = currentIds.includes(construtoraId);
+    const nextAllowedIds = isCurrentlyAllowed
+      ? currentIds.filter((id) => id !== construtoraId)
+      : [...currentIds, construtoraId];
+
+    const updatedPartner: PartnerProfile = {
+      ...existing,
+      allowedConstrutoraIds: nextAllowedIds,
+    };
+
+    setPartners((prev) => prev.map((p) => (p.id === partnerId ? updatedPartner : p)));
+    setCurrentPartner((prev) => (prev && prev.id === partnerId ? updatedPartner : prev));
+
+    await safeFetchJson(`/api/partners/${partnerId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedPartner),
+    });
+    await persistToFirestore('partners', updatedPartner.id, updatedPartner);
+
+    const targetConstrutora = partners.find((p) => p.id === construtoraId);
+    await recordAuditActivity(
+      'partner_updated',
+      `${isCurrentlyAllowed ? 'Remoção' : 'Liberação'} de acesso do parceiro ${existing.name} na construtora ${targetConstrutora?.name || construtoraId}`,
+      { partnerName: existing.name }
     );
   };
 
@@ -1401,6 +1504,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     clientName?: string;
     clientCpf?: string;
     propertyType?: PropertyType;
+    construtoraId?: string;
+    construtoraName?: string;
     fidelizacaoValor?: string;
     fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
     isConstrutora?: boolean;
@@ -1481,12 +1586,20 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clientName: bookingData.clientName || '',
       clientCpf: bookingData.clientCpf || '',
       propertyType: finalPropertyType,
+      ...(finalPropertyType === 'Empreendimento' && bookingData.construtoraId
+        ? { construtoraId: bookingData.construtoraId }
+        : {}),
+      ...(finalPropertyType === 'Empreendimento' && bookingData.construtoraName
+        ? { construtoraName: bookingData.construtoraName }
+        : {}),
       fidelizacaoValor: bookingData.fidelizacaoValor || '',
       ...(bookingData.fidelizacaoResponsavel
         ? { fidelizacaoResponsavel: bookingData.fidelizacaoResponsavel }
         : {}),
       isConstrutora:
-        bookingData.fidelizacaoResponsavel === 'Construtora' || Boolean(bookingData.isConstrutora),
+        bookingData.fidelizacaoResponsavel === 'Construtora' ||
+        Boolean(bookingData.construtoraId) ||
+        Boolean(bookingData.isConstrutora),
       agendaTopic: finalAgendaTopic,
       dealEstimate: bookingData.dealEstimate || '',
       additionalAttendees: bookingData.additionalAttendees || '',
@@ -1538,6 +1651,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       clientName: string;
       clientCpf: string;
       propertyType: PropertyType;
+      construtoraId?: string;
+      construtoraName?: string;
       fidelizacaoValor?: string;
       fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
       isConstrutora?: boolean;
@@ -1592,6 +1707,26 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateData.outcome !== undefined ? updateData.outcome : baseBooking.outcome,
       agendaTopic: `${updateData.propertyType || 'Imóvel'}: ${updateData.clientName || 'Cliente'}`,
     };
+
+    if (updateData.propertyType !== 'Empreendimento') {
+      delete updatedBooking.construtoraId;
+      delete updatedBooking.construtoraName;
+    } else {
+      if (updateData.construtoraId !== undefined) {
+        if (updateData.construtoraId) {
+          updatedBooking.construtoraId = updateData.construtoraId;
+        } else {
+          delete updatedBooking.construtoraId;
+        }
+      }
+      if (updateData.construtoraName !== undefined) {
+        if (updateData.construtoraName) {
+          updatedBooking.construtoraName = updateData.construtoraName;
+        } else {
+          delete updatedBooking.construtoraName;
+        }
+      }
+    }
 
     if (updateData.fidelizacaoResponsavel !== undefined) {
       if (updateData.fidelizacaoResponsavel) {
@@ -2080,6 +2215,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAdminPerspective,
         agencyActiveView,
         setAgencyActiveView,
+        construtoraActiveView,
+        setConstrutoraActiveView,
         loginWithCredentials,
         theme,
         toggleTheme,
@@ -2097,6 +2234,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         registerPartner,
         updatePartner,
         togglePartnerAgencyAccess,
+        togglePartnerConstrutoraAccess,
         deletePartner,
         registerConsultant,
         updateConsultant,

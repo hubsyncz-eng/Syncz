@@ -58,6 +58,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const selectedPartnerFromList = partners.find((p) => p.id === selectedPartnerId);
 
+  const activeRegularPartner =
+    currentPartner && currentPartner.segment?.toLowerCase() !== 'construtora'
+      ? currentPartner
+      : partners.find((p) => p.segment?.toLowerCase() !== 'construtora') || currentPartner;
+
   const partnerProfile =
     currentUser?.role === 'partner'
       ? {
@@ -77,7 +82,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             phone: selectedPartnerFromList.phone || '',
             cnpj: selectedPartnerFromList.cnpj || '',
           }
-        : currentPartner || {
+        : activeRegularPartner || {
             id: 'p_temp',
             name: 'Parceiro Negocial',
             representative: 'Representante',
@@ -90,12 +95,59 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const currentSlotInState = slots.find((s) => s.id === slot.id) || slot;
   const isSlotStillAvailable = existingBooking || currentSlotInState.status === 'available';
 
-  // Specific Booking Fields: Cliente, CPF, Seletor Imóvel/Empreendimento, Fidelização + Responsável, Parceiro (Agência), Notas
+  // Specific Booking Fields: Cliente, CPF, Seletor Imóvel/Empreendimento, Construtora (quando Empreendimento), Fidelização + Responsável, Parceiro (Agência), Notas
   const [clientName, setClientName] = useState(existingBooking?.clientName || '');
   const [clientCpf, setClientCpf] = useState(existingBooking?.clientCpf || '');
   const [propertyType, setPropertyType] = useState<PropertyType>(
     existingBooking?.propertyType || 'Imóvel Individual'
   );
+
+  const targetPartnerForConstrutora = isAgencyActor
+    ? selectedPartnerFromList
+    : partners.find((p) => p.id === partnerProfile.id) ||
+      partners.find(
+        (p) =>
+          p.segment?.toLowerCase() !== 'construtora' &&
+          ((partnerProfile.email &&
+            p.email?.toLowerCase() === partnerProfile.email.toLowerCase()) ||
+            (partnerProfile.name &&
+              p.name?.toLowerCase() === partnerProfile.name.toLowerCase()))
+      );
+
+  const construtorasList = [...partners]
+    .filter((p) => {
+      if (p.segment?.toLowerCase() !== 'construtora') return false;
+      if (!targetPartnerForConstrutora) return false;
+      const allowed = Array.isArray(targetPartnerForConstrutora.allowedConstrutoraIds)
+        ? targetPartnerForConstrutora.allowedConstrutoraIds
+        : [];
+      return allowed.includes(p.id);
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' }));
+
+  const initialConstrutoraId = existingBooking
+    ? construtorasList.find(
+        (c) =>
+          c.id === existingBooking.construtoraId || c.name === existingBooking.construtoraName
+      )?.id || (construtorasList.length === 1 ? construtorasList[0].id : '')
+    : construtorasList.length === 1
+      ? construtorasList[0].id
+      : '';
+
+  const [selectedConstrutoraId, setSelectedConstrutoraId] = useState<string>(initialConstrutoraId);
+  const selectedConstrutoraFromList = construtorasList.find((c) => c.id === selectedConstrutoraId);
+
+  React.useEffect(() => {
+    if (
+      selectedConstrutoraId &&
+      !construtorasList.some((c) => c.id === selectedConstrutoraId)
+    ) {
+      setSelectedConstrutoraId(construtorasList.length === 1 ? construtorasList[0].id : '');
+    } else if (!selectedConstrutoraId && construtorasList.length === 1) {
+      setSelectedConstrutoraId(construtorasList[0].id);
+    }
+  }, [construtorasList, selectedConstrutoraId]);
+
   const [fidelizacaoValor, setFidelizacaoValor] = useState(
     existingBooking?.fidelizacaoValor || ''
   );
@@ -175,6 +227,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
+    if (propertyType === 'Empreendimento' && construtorasList.length > 0 && !selectedConstrutoraFromList) {
+      setErrorMsg('Por favor selecione a construtora do empreendimento.');
+      return;
+    }
+
     if (isAgencyActor && !selectedPartnerFromList) {
       setErrorMsg('Por favor selecione um dos parceiros cadastrados.');
       return;
@@ -183,15 +240,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    const finalConstrutoraId =
+      propertyType === 'Empreendimento' ? selectedConstrutoraFromList?.id || '' : '';
+    const finalConstrutoraName =
+      propertyType === 'Empreendimento' ? selectedConstrutoraFromList?.name || '' : '';
+
     try {
       if (existingBooking) {
         const updated = await updateBooking(existingBooking.id, {
           clientName: clientName.trim(),
           clientCpf: clientCpf.trim(),
           propertyType,
+          construtoraId: finalConstrutoraId,
+          construtoraName: finalConstrutoraName,
           fidelizacaoValor: fidelizacaoValor.trim(),
           fidelizacaoResponsavel,
-          isConstrutora: fidelizacaoResponsavel === 'Construtora',
+          isConstrutora:
+            fidelizacaoResponsavel === 'Construtora' || Boolean(finalConstrutoraId),
           partnerNotes: partnerNotes.trim(),
           ...(isAgencyActor && selectedPartnerFromList
             ? {
@@ -220,9 +285,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         clientName: clientName.trim(),
         clientCpf: clientCpf.trim(),
         propertyType,
+        construtoraId: finalConstrutoraId || undefined,
+        construtoraName: finalConstrutoraName || undefined,
         fidelizacaoValor: fidelizacaoValor.trim(),
         fidelizacaoResponsavel,
-        isConstrutora: fidelizacaoResponsavel === 'Construtora',
+        isConstrutora:
+          fidelizacaoResponsavel === 'Construtora' || Boolean(finalConstrutoraId),
         agendaTopic: `${propertyType}: ${clientName.trim()}`,
         partnerNotes: partnerNotes.trim(),
       });
@@ -342,7 +410,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setPropertyType('Empreendimento')}
+                onClick={() => {
+                  setPropertyType('Empreendimento');
+                  if (construtorasList.length === 1) {
+                    setSelectedConstrutoraId(construtorasList[0].id);
+                  }
+                }}
                 className={`py-3 px-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   propertyType === 'Empreendimento'
                     ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/10'
@@ -353,6 +426,35 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 <span>Empreendimento</span>
               </button>
             </div>
+
+            {/* Caixa de seleção de Construtora quando Empreendimento estiver marcado */}
+            {propertyType === 'Empreendimento' && (
+              <div className="mt-3 animate-in fade-in duration-150">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Construtora {construtorasList.length > 0 ? '*' : ''}
+                </label>
+                <div className="relative">
+                  <Building className="w-4 h-4 text-amber-400 absolute left-3 top-3 pointer-events-none" />
+                  <select
+                    required={construtorasList.length > 0}
+                    disabled={construtorasList.length === 0}
+                    value={selectedConstrutoraId}
+                    onChange={(e) => setSelectedConstrutoraId(e.target.value)}
+                    className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <option value="" disabled>
+                      {construtorasList.length > 0 ? 'Selecione uma construtora...' : ''}
+                    </option>
+                    {construtorasList.map((construtora) => (
+                      <option key={construtora.id} value={construtora.id}>
+                        {construtora.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Fidelização (Valor em R$ 0.000,00) + 3 botões embaixo: Cliente, Parceiro, Construtora */}
@@ -418,6 +520,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   </option>
                   {[...partners]
                     .filter((partner) => {
+                      if (partner.segment?.toLowerCase() === 'construtora') return false;
                       if (existingBooking && partner.id === existingBooking.partnerId) return true;
                       const allowed = Array.isArray(partner.allowedAgencyIds)
                         ? partner.allowedAgencyIds

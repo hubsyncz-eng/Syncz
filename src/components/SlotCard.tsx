@@ -27,6 +27,7 @@ interface SlotCardProps {
   booking?: Booking;
   onBookSlot?: (slot: TimeSlot, booking?: Booking) => void;
   isPartnerView?: boolean;
+  isConstrutoraView?: boolean;
 }
 
 const OUTCOME_OPTIONS: {
@@ -84,6 +85,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   booking,
   onBookSlot,
   isPartnerView = false,
+  isConstrutoraView = false,
 }) => {
   const {
     currentUser,
@@ -110,16 +112,22 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOutcomeMenuOpen, isSegmentoMenuOpen]);
 
-  const activeRole = isPartnerView
-    ? 'partner'
-    : currentUser?.role === 'admin'
-      ? adminPerspective === 'agency_view'
-        ? 'agency'
-        : 'partner'
-      : currentUser?.role || 'partner';
+  const activeRole = isConstrutoraView
+    ? 'construtora'
+    : isPartnerView
+      ? 'partner'
+      : currentUser?.role === 'admin'
+        ? adminPerspective === 'agency_view'
+          ? 'agency'
+          : adminPerspective === 'construtora_view'
+            ? 'construtora'
+            : 'partner'
+        : currentUser?.role || 'partner';
+
+  const isReadOnlyConstrutora = activeRole === 'construtora';
 
   const activePartnerId =
-    currentUser?.role === 'partner'
+    currentUser?.role === 'partner' || currentUser?.role === 'construtora'
       ? currentUser.partnerId || currentUser.id
       : currentPartner?.id || 'p1';
 
@@ -128,14 +136,22 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   const todayIso = formatDateToISO(new Date());
   const isPartnerInclusionBlocked =
-    activeRole === 'partner' && !isBooked && slot.date <= todayIso;
+    (activeRole === 'partner' || activeRole === 'construtora') &&
+    !isBooked &&
+    slot.date <= todayIso;
 
-  // Check if booked by currently active partner
+  // Check if booked by currently active partner (or linked to construtora when in construtora view)
   const isBookedByCurrentPartner =
-    isBooked && booking && booking.partnerId === activePartnerId;
+    isBooked &&
+    booking &&
+    (booking.partnerId === activePartnerId ||
+      (isReadOnlyConstrutora &&
+        (booking.construtoraId === activePartnerId ||
+          (!booking.construtoraId &&
+            (booking.fidelizacaoResponsavel === 'Construtora' || booking.isConstrutora)))));
 
-  // In partner view, hide other partners' bookings, locked slots, and unbookable free slots completely
-  if (activeRole === 'partner') {
+  // In partner / construtora view, hide other bookings, locked slots, and unbookable free slots completely
+  if (activeRole === 'partner' || activeRole === 'construtora') {
     if (isBooked && !isBookedByCurrentPartner) return null;
     if (isLocked) return null;
     if (!isBooked && slot.date <= todayIso) return null;
@@ -146,6 +162,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   }
 
   const handleCardClick = () => {
+    if (isReadOnlyConstrutora) return;
     if (isOutcomeMenuOpen || isSegmentoMenuOpen) return;
     if (!isBooked) {
       if (isPartnerInclusionBlocked) return;
@@ -167,22 +184,28 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     <div
       onClick={handleCardClick}
       title={
-        isBooked && booking
-          ? 'Clique no card para editar este agendamento'
-          : !isBooked
-            ? isPartnerInclusionBlocked
-              ? 'Agendamentos para parceiros só são permitidos a partir do próximo dia'
-              : 'Clique para agendar este horário'
-            : undefined
+        isReadOnlyConstrutora
+          ? undefined
+          : isBooked && booking
+            ? 'Clique no card para editar este agendamento'
+            : !isBooked
+              ? isPartnerInclusionBlocked
+                ? 'Agendamentos para parceiros só são permitidos a partir do próximo dia'
+                : 'Clique para agendar este horário'
+              : undefined
       }
       className={`syncz-slot-card rounded-2xl p-3.5 transition-all duration-200 border relative group ${
         !isBooked
           ? isPartnerInclusionBlocked
             ? 'syncz-slot-disabled bg-slate-900/50 border-slate-800/80 opacity-60 cursor-not-allowed'
-            : 'syncz-slot-available bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
+            : isReadOnlyConstrutora
+              ? 'syncz-slot-available bg-slate-900/90 border-slate-700 cursor-default'
+              : 'syncz-slot-available bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
           : currentOutcomeConfig
-            ? currentOutcomeConfig.cardClass
-            : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
+            ? `${currentOutcomeConfig.cardClass} ${isReadOnlyConstrutora ? '!cursor-default' : ''}`
+            : isReadOnlyConstrutora
+              ? 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 cursor-default'
+              : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
       }`}
     >
       {/* Top Header: Time, Weekday & Date + Client Name (Desktop Col 2) + Action Icons */}
@@ -244,8 +267,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           </div>
         )}
 
-        {/* Action icons in top right for available slots */}
-        {!isBooked && (
+        {/* Action icons in top right for available slots (hidden in read-only Construtora view) */}
+        {!isBooked && !isReadOnlyConstrutora && (
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
@@ -297,7 +320,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               }
               title={
                 booking.propertyType === 'Empreendimento'
-                  ? 'Empreendimento'
+                  ? booking.construtoraName
+                    ? `Empreendimento • ${booking.construtoraName}`
+                    : 'Empreendimento'
                   : 'Imóvel Individual'
               }
             >

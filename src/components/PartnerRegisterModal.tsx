@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useRealtime } from '../context/RealtimeContext.tsx';
 import { PartnerProfile } from '../types/index.ts';
-import { Users, X, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
+import { Users, Building, X, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface PartnerRegisterModalProps {
   onClose: () => void;
   onPartnerCreated?: (partnerId: string) => void;
   partnerToEdit?: PartnerProfile | null;
   canDelete?: boolean;
+  initialSegment?: 'Parceiro Negocial' | 'Construtora';
 }
 
 export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
@@ -15,6 +16,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
   onPartnerCreated,
   partnerToEdit,
   canDelete: propCanDelete,
+  initialSegment = 'Parceiro Negocial',
 }) => {
   const {
     registerPartner,
@@ -25,19 +27,46 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
     adminPerspective,
   } = useRealtime();
   const isEditing = Boolean(partnerToEdit);
-  const allowDelete = propCanDelete !== undefined ? propCanDelete : currentUser?.role !== 'partner';
+  const allowDelete =
+    propCanDelete !== undefined
+      ? propCanDelete
+      : currentUser?.role !== 'partner' && currentUser?.role !== 'construtora';
+
+  const resolvedInitialSegment: 'Parceiro Negocial' | 'Construtora' = partnerToEdit
+    ? partnerToEdit.segment?.toLowerCase() === 'construtora'
+      ? 'Construtora'
+      : 'Parceiro Negocial'
+    : initialSegment;
 
   const [name, setName] = useState(partnerToEdit?.name || '');
   const [representative, setRepresentative] = useState(partnerToEdit?.representative || partnerToEdit?.name || '');
   const [email, setEmail] = useState(partnerToEdit?.email || '');
   const [phone, setPhone] = useState(partnerToEdit?.phone || '');
   const [cnpj, setCnpj] = useState(partnerToEdit?.cnpj || '');
-  const [password, setPassword] = useState(partnerToEdit?.password || 'parceiro123');
+  const [profileSegment, setProfileSegment] = useState<'Parceiro Negocial' | 'Construtora'>(
+    resolvedInitialSegment
+  );
+  const [password, setPassword] = useState(
+    partnerToEdit?.password || (resolvedInitialSegment === 'Construtora' ? 'construtora123' : 'parceiro123')
+  );
+
+  const isConstrutora = profileSegment === 'Construtora';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleSegmentChange = (newSegment: 'Parceiro Negocial' | 'Construtora') => {
+    setProfileSegment(newSegment);
+    if (!isEditing) {
+      if (newSegment === 'Construtora' && password === 'parceiro123') {
+        setPassword('construtora123');
+      } else if (newSegment === 'Parceiro Negocial' && password === 'construtora123') {
+        setPassword('parceiro123');
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +78,8 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    const defaultPass = isConstrutora ? 'construtora123' : 'parceiro123';
+
     try {
       if (isEditing && partnerToEdit) {
         await updatePartner(partnerToEdit.id, {
@@ -57,8 +88,8 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
           email: email.trim(),
           phone: phone.trim(),
           cnpj: cnpj.trim(),
-          segment: partnerToEdit.segment || 'Parceiro Negocial',
-          password: password || 'parceiro123',
+          segment: profileSegment,
+          password: password || defaultPass,
           allowedAgencyIds: partnerToEdit.allowedAgencyIds,
         });
       } else {
@@ -73,8 +104,8 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
           email: email.trim(),
           phone: phone.trim(),
           cnpj: cnpj.trim(),
-          segment: 'Parceiro Negocial',
-          password: password || 'parceiro123',
+          segment: profileSegment,
+          password: password || defaultPass,
           allowedAgencyIds: isAgencyCreator && activeAgencyId ? [activeAgencyId] : [],
         });
 
@@ -85,7 +116,14 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
       onClose();
     } catch (err: any) {
       setErrorMsg(
-        err.message || (isEditing ? 'Erro ao atualizar parceiro.' : 'Erro ao cadastrar parceiro negocial.')
+        err.message ||
+          (isEditing
+            ? isConstrutora
+              ? 'Erro ao atualizar construtora.'
+              : 'Erro ao atualizar parceiro.'
+            : isConstrutora
+              ? 'Erro ao cadastrar construtora.'
+              : 'Erro ao cadastrar parceiro negocial.')
       );
       setIsSubmitting(false);
     }
@@ -104,7 +142,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
       await deletePartner(partnerToEdit.id);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao excluir parceiro.');
+      setErrorMsg(err.message || (isConstrutora ? 'Erro ao excluir construtora.' : 'Erro ao excluir parceiro.'));
       setIsDeleting(false);
     }
   };
@@ -124,25 +162,73 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
 
         {/* Header */}
         <div className="flex items-center gap-3 pb-5 border-b border-slate-800">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-            <Users className="w-7 h-7" />
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold ${
+              isConstrutora
+                ? 'bg-amber-500/20 text-amber-400'
+                : 'bg-emerald-500/20 text-emerald-400'
+            }`}
+          >
+            {isConstrutora ? <Building className="w-7 h-7" /> : <Users className="w-7 h-7" />}
           </div>
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">
-              {isEditing ? 'Editar Parceiro Negocial' : 'Novo Parceiro Negocial'}
+              {isEditing
+                ? isConstrutora
+                  ? 'Editar Construtora'
+                  : 'Editar Parceiro Negocial'
+                : isConstrutora
+                  ? 'Nova Construtora'
+                  : 'Novo Parceiro Negocial'}
             </h2>
             <p className="text-xs text-slate-400">
               {isEditing
-                ? 'Altere os dados cadastrais ou exclua o cadastro do parceiro'
-                : 'O Administrador cadastra empresas parceiras para visualização e agendamento'}
+                ? isConstrutora
+                  ? 'Altere os dados cadastrais ou exclua o cadastro da construtora'
+                  : 'Altere os dados cadastrais ou exclua o cadastro do parceiro'
+                : isConstrutora
+                  ? 'O Administrador cadastra construtoras para visualização das agendas'
+                  : 'O Administrador cadastra empresas parceiras para visualização e agendamento'}
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs sm:text-sm">
           <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Tipo de Cadastro / Visão *
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleSegmentChange('Parceiro Negocial')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  profileSegment === 'Parceiro Negocial'
+                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <Users className="w-4 h-4 shrink-0" />
+                <span>Parceiro</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSegmentChange('Construtora')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                  profileSegment === 'Construtora'
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <Building className="w-4 h-4 shrink-0" />
+                <span>Construtora</span>
+              </button>
+            </div>
+          </div>
+
+          <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Razão Social / Nome da Empresa Parceira *
+              {isConstrutora ? 'Razão Social / Nome da Construtora *' : 'Razão Social / Nome da Empresa *'}
             </label>
             <input
               type="text"
@@ -200,14 +286,14 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Senha de Acesso do Parceiro *
+                {isConstrutora ? 'Senha de Acesso da Construtora *' : 'Senha de Acesso do Parceiro *'}
               </label>
               <input
                 type="text"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Ex: parceiro123"
+                placeholder={isConstrutora ? 'Ex: construtora123' : 'Ex: parceiro123'}
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-emerald-500 text-xs sm:text-sm font-mono"
               />
             </div>
@@ -248,7 +334,11 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || isDeleting}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold text-xs sm:text-sm shadow-lg cursor-pointer disabled:opacity-50 ${
+                isConstrutora
+                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30'
+              }`}
             >
               {isSubmitting ? (
                 <>
@@ -258,7 +348,11 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  {isEditing ? 'Salvar Alterações' : 'Cadastrar Parceiro'}
+                  {isEditing
+                    ? 'Salvar Alterações'
+                    : isConstrutora
+                      ? 'Cadastrar Construtora'
+                      : 'Cadastrar Parceiro'}
                 </>
               )}
             </button>
