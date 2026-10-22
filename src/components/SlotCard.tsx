@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TimeSlot, Booking, BookingOutcome } from '../types/index.ts';
+import { TimeSlot, Booking, BookingOutcome, BookingSegmento } from '../types/index.ts';
 import { useRealtime } from '../context/RealtimeContext.tsx';
 import { formatPortugueseDate, formatDateToISO } from '../utils/dateUtils.ts';
 import {
@@ -13,6 +13,7 @@ import {
   Home,
   FileText,
   Banknote,
+  Layers,
   Menu,
   CheckCircle2,
   XCircle,
@@ -90,21 +91,24 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     adminPerspective,
     deleteSlot,
     updateBookingOutcome,
+    updateBookingSegmento,
   } = useRealtime();
 
   const [isOutcomeMenuOpen, setIsOutcomeMenuOpen] = useState(false);
+  const [isSegmentoMenuOpen, setIsSegmentoMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isOutcomeMenuOpen) return;
+    if (!isOutcomeMenuOpen && !isSegmentoMenuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsOutcomeMenuOpen(false);
+        setIsSegmentoMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOutcomeMenuOpen]);
+  }, [isOutcomeMenuOpen, isSegmentoMenuOpen]);
 
   const activeRole = isPartnerView
     ? 'partner'
@@ -142,7 +146,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   }
 
   const handleCardClick = () => {
-    if (isOutcomeMenuOpen) return;
+    if (isOutcomeMenuOpen || isSegmentoMenuOpen) return;
     if (!isBooked) {
       if (isPartnerInclusionBlocked) return;
       if (onBookSlot) onBookSlot(slot);
@@ -329,10 +333,82 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
             {activeRole === 'agency' && (
               <>
+                {/* Ícone de seleção de Segmento (Varejo / Carteira) visível apenas para a agência */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setIsOutcomeMenuOpen(false);
+                    setIsSegmentoMenuOpen((prev) => !prev);
+                  }}
+                  title={
+                    booking.segmento
+                      ? `Segmento: ${booking.segmento} (clique para alterar)`
+                      : 'Selecionar segmento (Varejo ou Carteira)'
+                  }
+                  className={
+                    currentOutcomeConfig
+                      ? `p-1.5 rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
+                      : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
+                  }
+                >
+                  {booking.segmento === 'Varejo' ? (
+                    <span className="w-4 h-4 flex items-center justify-center text-xs font-extrabold leading-none shrink-0">
+                      V
+                    </span>
+                  ) : booking.segmento === 'Carteira' ? (
+                    <span className="w-4 h-4 flex items-center justify-center text-xs font-extrabold leading-none shrink-0">
+                      C
+                    </span>
+                  ) : (
+                    <Layers className="w-4 h-4 shrink-0" />
+                  )}
+                </button>
+
+                {isSegmentoMenuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="syncz-agency-menu absolute right-8 top-full mt-1.5 w-40 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 z-40 space-y-1 animate-in fade-in"
+                  >
+                    {(['Varejo', 'Carteira'] as BookingSegmento[]).map((seg) => {
+                      const isSelected = booking.segmento === seg;
+                      const letter = seg === 'Varejo' ? 'V' : 'C';
+                      return (
+                        <button
+                          key={seg}
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setIsSegmentoMenuOpen(false);
+                            await updateBookingSegmento(
+                              booking.id,
+                              isSelected ? null : seg
+                            );
+                          }}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'bg-[#00a8ff]/20 text-[#00a8ff] border-[#00a8ff]/50'
+                              : 'border-transparent text-slate-200 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="w-4 h-4 rounded-md bg-slate-800/90 border border-slate-700 flex items-center justify-center text-[10px] font-extrabold text-white shrink-0">
+                              {letter}
+                            </span>
+                            <span>{seg}</span>
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsSegmentoMenuOpen(false);
                     setIsOutcomeMenuOpen((prev) => !prev);
                   }}
                   title={

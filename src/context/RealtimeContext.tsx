@@ -11,6 +11,7 @@ import {
   UserSession,
   PropertyType,
   BookingOutcome,
+  BookingSegmento,
   FidelizacaoResponsavel,
 } from '../types/index.ts';
 import {
@@ -123,6 +124,7 @@ interface RealtimeContextValue {
     }
   ) => Promise<Booking>;
   updateBookingOutcome: (bookingId: string, outcome: BookingOutcome | null) => Promise<void>;
+  updateBookingSegmento: (bookingId: string, segmento: BookingSegmento | null) => Promise<void>;
   cancelBooking: (bookingId: string, reason?: string) => Promise<boolean>;
   toggleSlotStatus: (slotId: string) => Promise<boolean>;
   deleteSlot: (slotId: string) => Promise<boolean>;
@@ -1673,6 +1675,51 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
+  const updateBookingSegmento = async (
+    bookingId: string,
+    segmento: BookingSegmento | null
+  ): Promise<void> => {
+    const existing = bookings.find((b) => b.id === bookingId);
+    if (!existing) return;
+
+    const updatedBooking: Booking = {
+      ...existing,
+    };
+    if (segmento) {
+      updatedBooking.segmento = segmento;
+    } else {
+      delete updatedBooking.segmento;
+    }
+
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? updatedBooking : b)));
+
+    await safeFetchJson(`/api/bookings/${bookingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ segmento: segmento || '' }),
+    });
+
+    await persistToFirestore('bookings', updatedBooking.id, updatedBooking);
+    await recordAuditActivity(
+      'booking_updated',
+      segmento
+        ? `Marcação de segmento "${segmento}" no agendamento de ${existing.clientName || existing.partnerName} (${existing.slotStartTime} - ${formatBrDate(existing.slotDate)})`
+        : `Remoção de segmento no agendamento de ${existing.clientName || existing.partnerName} (${existing.slotStartTime} - ${formatBrDate(existing.slotDate)})`,
+      {
+        partnerName: existing.partnerName,
+        protocol: existing.protocol,
+      }
+    );
+
+    addToast({
+      type: 'info',
+      title: segmento ? `Segmento: ${segmento}` : 'Segmento Removido',
+      message: segmento
+        ? `O agendamento de ${existing.clientName || existing.partnerName} foi definido como "${segmento}".`
+        : `O segmento do agendamento de ${existing.clientName || existing.partnerName} foi limpo.`,
+    });
+  };
+
   const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
     try {
       const apiRes = await safeFetchJson(`/api/bookings/${bookingId}/cancel`, {
@@ -2057,6 +2104,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         bookSlot,
         updateBooking,
         updateBookingOutcome,
+        updateBookingSegmento,
         cancelBooking,
         toggleSlotStatus,
         deleteSlot,

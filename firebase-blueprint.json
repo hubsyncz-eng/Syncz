@@ -112,6 +112,7 @@
         "locationOrLink": { "type": "string", "maxLength": 300 },
         "protocol": { "type": "string", "maxLength": 50 },
         "consultantName": { "type": "string", "maxLength": 150 },
+        "segmento": { "type": "string", "maxLength": 30 },
         "status": { "type": "string", "enum": ["confirmed", "in_progress", "completed", "cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }

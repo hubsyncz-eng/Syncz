@@ -996,6 +996,7 @@ app.patch('/api/bookings/:id', async (req, res) => {
     partnerPhone,
     partnerCnpj,
     outcome,
+    segmento,
   } = req.body;
 
   const booking = bookings.find((b) => b.id === id);
@@ -1034,6 +1035,13 @@ app.patch('/api/bookings/:id', async (req, res) => {
       booking.outcome = outcome;
     } else {
       delete booking.outcome;
+    }
+  }
+  if (segmento !== undefined) {
+    if (segmento) {
+      booking.segmento = segmento;
+    } else {
+      delete booking.segmento;
     }
   }
   booking.agendaTopic = `${booking.propertyType || 'Imóvel'}: ${booking.clientName || 'Cliente'}`;
