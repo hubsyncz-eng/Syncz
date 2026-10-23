@@ -83,9 +83,9 @@ export const LoginPortal: React.FC = () => {
               Syncz
             </h1>
 
-            {/* Seja bem vindo */}
-            <p className="text-slate-300 text-base font-medium mt-1.5">
-              Seja bem vindo
+            {/* Subtitle below Syncz */}
+            <p className="text-slate-300 text-sm sm:text-base font-medium mt-1.5">
+              Gestão de Agências, Parceiros & Construtoras
             </p>
           </div>
 
@@ -97,13 +97,13 @@ export const LoginPortal: React.FC = () => {
             </div>
           )}
 
-          {/* Form: usuário & Senha */}
+          {/* Form: Usuário & Senha */}
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Campo Usuário */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                usuário:
+                Usuário:
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">

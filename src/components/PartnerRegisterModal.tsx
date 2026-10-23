@@ -43,9 +43,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
   const [email, setEmail] = useState(partnerToEdit?.email || '');
   const [phone, setPhone] = useState(partnerToEdit?.phone || '');
   const [cnpj, setCnpj] = useState(partnerToEdit?.cnpj || '');
-  const [profileSegment, setProfileSegment] = useState<'Parceiro Negocial' | 'Construtora'>(
-    resolvedInitialSegment
-  );
+  const profileSegment: 'Parceiro Negocial' | 'Construtora' = resolvedInitialSegment;
   const [password, setPassword] = useState(
     partnerToEdit?.password || (resolvedInitialSegment === 'Construtora' ? 'construtora123' : 'parceiro123')
   );
@@ -56,17 +54,6 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const handleSegmentChange = (newSegment: 'Parceiro Negocial' | 'Construtora') => {
-    setProfileSegment(newSegment);
-    if (!isEditing) {
-      if (newSegment === 'Construtora' && password === 'parceiro123') {
-        setPassword('construtora123');
-      } else if (newSegment === 'Parceiro Negocial' && password === 'construtora123') {
-        setPassword('parceiro123');
-      }
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,38 +181,6 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs sm:text-sm">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Tipo de Cadastro / Visão *
-            </label>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleSegmentChange('Parceiro Negocial')}
-                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                  profileSegment === 'Parceiro Negocial'
-                    ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                }`}
-              >
-                <Users className="w-4 h-4 shrink-0" />
-                <span>Parceiro</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSegmentChange('Construtora')}
-                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                  profileSegment === 'Construtora'
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                }`}
-              >
-                <Building className="w-4 h-4 shrink-0" />
-                <span>Construtora</span>
-              </button>
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               {isConstrutora ? 'Razão Social / Nome da Construtora *' : 'Razão Social / Nome da Empresa *'}

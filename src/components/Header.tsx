@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRealtime } from '../context/RealtimeContext.tsx';
 import {
+  Building,
   Building2,
   Users,
   UserCheck,
@@ -30,6 +31,7 @@ export const Header: React.FC<HeaderProps> = () => {
     partners,
     currentAgency,
     currentPartner,
+    setCurrentPartner,
     openAgencyModal,
     openPartnerModal,
   } = useRealtime();
@@ -49,7 +51,10 @@ export const Header: React.FC<HeaderProps> = () => {
     currentUser?.role === 'construtora' ||
     (currentUser?.role === 'admin' && adminPerspective === 'construtora_view');
 
-  const hasSideMenu = isAgencyView || isPartnerView || isConstrutoraView;
+  const isMasterView =
+    currentUser?.role === 'admin' && adminPerspective === 'admin_master';
+
+  const hasSideMenu = Boolean(currentUser);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -74,10 +79,10 @@ export const Header: React.FC<HeaderProps> = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
           
-          {/* Logo and Brand (with Agency/Partner Options Menu on Left Icon click) */}
+          {/* Logo and Brand (with Agency/Partner/Master Options Menu on Left Icon click) */}
           <div className="relative flex items-center gap-3" ref={menuRef}>
             
-            {/* Brand Calendar Icon (clickable in Agency & Partner View to open options bar) */}
+            {/* Brand Calendar Icon (clickable in all authenticated views to open options menu) */}
             <button
               type="button"
               onClick={() => {
@@ -86,13 +91,15 @@ export const Header: React.FC<HeaderProps> = () => {
                 }
               }}
               title={
-                isAgencyView
-                  ? 'Abrir menu de opções da agência'
-                  : isPartnerView
-                    ? 'Abrir menu de opções do parceiro'
-                    : isConstrutoraView
-                      ? 'Abrir menu de opções da construtora'
-                      : 'Syncz'
+                isMasterView
+                  ? 'Abrir menu de opções'
+                  : isAgencyView
+                    ? 'Abrir menu de opções da agência'
+                    : isPartnerView
+                      ? 'Abrir menu de opções do parceiro'
+                      : isConstrutoraView
+                        ? 'Abrir menu de opções da construtora'
+                        : 'Syncz'
               }
               className={`syncz-header-logo-box w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/15 via-blue-500/15 to-indigo-500/15 border border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/10 transition-all ${
                 hasSideMenu
@@ -253,6 +260,58 @@ export const Header: React.FC<HeaderProps> = () => {
                   </button>
                 )}
 
+                {isMasterView && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminPerspective('agency_view');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span>Visão Agência</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const regularPartners = partners.filter(
+                          (p) => p.segment?.toLowerCase() !== 'construtora'
+                        );
+                        if (regularPartners.length > 0) {
+                          setCurrentPartner(regularPartners[0]);
+                        }
+                        setAdminPerspective('partner_view');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Visão Parceiro</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const construtoras = partners.filter(
+                          (p) => p.segment?.toLowerCase() === 'construtora'
+                        );
+                        if (construtoras.length > 0) {
+                          setCurrentPartner(construtoras[0]);
+                        }
+                        setAdminPerspective('construtora_view');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Building className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Visão Construtora</span>
+                    </button>
+                  </>
+                )}
+
                 {/* If viewing as Admin, allow quick return to Master Dashboard */}
                 {currentUser?.role === 'admin' &&
                   (adminPerspective === 'agency_view' ||
@@ -309,9 +368,9 @@ export const Header: React.FC<HeaderProps> = () => {
             )}
           </div>
 
-          {/* Right Side: Theme Switcher, Logged User Badge & Logout Button (Hidden for Agency & Partner Views) */}
+          {/* Right Side: Theme Switcher for Login Screen (when not logged in) */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            {!hasSideMenu && (
+            {!currentUser && (
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -331,52 +390,6 @@ export const Header: React.FC<HeaderProps> = () => {
                 )}
               </button>
             )}
-
-            {currentUser && !hasSideMenu ? (
-              <>
-                {/* Role Badge */}
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs">
-                  {currentUser.role === 'admin' && (
-                    <>
-                      <Shield className="w-4 h-4 text-purple-400" />
-                      <span className="font-semibold text-purple-300">
-                        Administrador Syncz
-                        {adminPerspective === 'agency_view' && ' (Visão Agência)'}
-                        {adminPerspective === 'partner_view' && ' (Visão Parceiro)'}
-                      </span>
-                    </>
-                  )}
-                  {currentUser.role === 'agency' && (
-                    <>
-                      <Building2 className="w-4 h-4 text-blue-400" />
-                      <span className="font-semibold text-blue-300 truncate max-w-[150px]">
-                        {currentUser.name}
-                      </span>
-                    </>
-                  )}
-                  {currentUser.role === 'partner' && (
-                    <>
-                      <Users className="w-4 h-4 text-emerald-400" />
-                      <span className="font-semibold text-emerald-300 truncate max-w-[150px]">
-                        {currentUser.name}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* Logout Button */}
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 hover:text-rose-300 border border-slate-700/80 text-slate-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-                  title="Sair e voltar ao portal de login"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Sair / Trocar Acesso</span>
-                  <span className="sm:hidden">Sair</span>
-                </button>
-              </>
-            ) : null}
           </div>
 
         </div>
