@@ -262,25 +262,32 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     return weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
   }, [weekVisibleSlots, effectiveDayFilter]);
 
-  // Available slots count (only starting from the next day for partners and for the selected agency)
+  // Available slots count (only starting from the next day for partners and for the selected agency/day/week)
   const availableThisWeekCount = useMemo(() => {
     if (!selectedAgencyId || !isSelectedAgencyAllowed) return 0;
-    return slots.filter(
-      (s) =>
-        s.agencyId === selectedAgencyId &&
-        weekDateSet.has(s.date) &&
-        s.status === 'available' &&
-        s.date > todayIso
-    ).length;
-  }, [slots, weekDateSet, todayIso, selectedAgencyId, isSelectedAgencyAllowed]);
+    return filteredSlots.filter((s) => s.status === 'available').length;
+  }, [filteredSlots, selectedAgencyId, isSelectedAgencyAllowed]);
 
-  // Partner's / Construtora's bookings ordered by date and time
+  // Partner's / Construtora's bookings filtered by selected agency, week, or specific day and ordered by date and time
   const myBookings = useMemo(() => {
     return bookings
       .filter((b) => {
         if (b.status !== 'confirmed') return false;
+        if (selectedAgencyId) {
+          if (b.agencyId !== selectedAgencyId) return false;
+        } else {
+          if (!allowedAgencies.some((ag) => ag.id === b.agencyId)) return false;
+        }
+
+        const slot = slots.find((sl) => sl.id === b.slotId);
+        const bookingDate = slot?.date || b.slotDate || '';
+        if (effectiveDayFilter) {
+          if (bookingDate !== effectiveDayFilter) return false;
+        } else {
+          if (!weekDateSet.has(bookingDate)) return false;
+        }
+
         if (isConstrutora) {
-          if (selectedAgencyId && b.agencyId !== selectedAgencyId) return false;
           return (
             b.partnerId === activePartner.id ||
             b.construtoraId === activePartner.id ||
@@ -300,7 +307,16 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
         const timeB = slotB?.startTime || b.slotStartTime || '';
         return timeA.localeCompare(timeB);
       });
-  }, [bookings, slots, activePartner.id, isConstrutora, selectedAgencyId]);
+  }, [
+    bookings,
+    slots,
+    activePartner.id,
+    isConstrutora,
+    selectedAgencyId,
+    allowedAgencies,
+    effectiveDayFilter,
+    weekDateSet,
+  ]);
 
   // Group all week visible slots by date (to filter out days with no schedule)
   const allWeekSlotsByDate = useMemo(() => {
@@ -472,9 +488,6 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
               if (found) {
                 setCurrentAgency(found);
               }
-              if (newAgencyId && activeTab !== 'available_slots') {
-                setActiveTab('available_slots');
-              }
             }}
             className="syncz-agency-select w-full sm:max-w-md px-3 py-2 rounded-xl bg-slate-950 border border-cyan-500/45 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
           >
@@ -522,9 +535,6 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                   setDayOffset(0);
                   setWeekOffset(0);
                   setSelectedDayFilter(null);
-                  if (activeTab !== 'available_slots') {
-                    setActiveTab('available_slots');
-                  }
                 }
               }}
               className="px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
@@ -576,9 +586,6 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                     setSelectedDayFilter(wd.dateStr);
                   } else {
                     setSelectedDayFilter((prev) => (prev === wd.dateStr ? null : wd.dateStr));
-                  }
-                  if (activeTab !== 'available_slots') {
-                    setActiveTab('available_slots');
                   }
                 }}
                 className={`px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all cursor-pointer border ${

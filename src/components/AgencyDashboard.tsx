@@ -253,15 +253,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
   }, [weekVisibleSlots, effectiveDayFilter]);
 
-  // Available slots count this week
+  // Available slots count considering current week/day filter
   const availableThisWeekCount = useMemo(() => {
-    return weekVisibleSlots.filter((s) => s.status === 'available').length;
-  }, [weekVisibleSlots]);
-
-  // Confirmed bookings count
-  const confirmedBookings = useMemo(() => {
-    return bookings.filter((b) => b.status === 'confirmed');
-  }, [bookings]);
+    return filteredSlots.filter((s) => s.status === 'available').length;
+  }, [filteredSlots]);
 
   // Group all week visible slots by date (to filter out days with no schedule)
   const allWeekSlotsByDate = useMemo(() => {
@@ -298,11 +293,18 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return map;
   }, [filteredSlots, weekDays]);
 
-  // Confirmed bookings list filtered and ordered by date and time
+  // Confirmed bookings list filtered by current week/day filter and ordered by date and time
   const filteredBookings = useMemo(() => {
     return bookings
       .filter((b) => {
-        if (b.status === 'cancelled') return false;
+        if (b.status !== 'confirmed') return false;
+        const slot = slots.find((sl) => sl.id === b.slotId);
+        const bookingDate = slot?.date || b.slotDate || '';
+        if (effectiveDayFilter) {
+          if (bookingDate !== effectiveDayFilter) return false;
+        } else {
+          if (!weekDateSet.has(bookingDate)) return false;
+        }
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         return (
@@ -322,7 +324,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         const timeB = slotB?.startTime || b.slotStartTime || '';
         return timeA.localeCompare(timeB);
       });
-  }, [bookings, slots, searchTerm]);
+  }, [bookings, slots, searchTerm, effectiveDayFilter, weekDateSet]);
+
+  // Confirmed bookings count considering active filters
+  const confirmedBookings = filteredBookings;
 
   const handleConfirmCancel = async () => {
     if (!cancellingBookingId) return;
@@ -802,9 +807,6 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                   setDayOffset(0);
                   setWeekOffset(0);
                   setSelectedDayFilter(null);
-                  if (activeTab !== 'calendar') {
-                    setActiveTab('calendar');
-                  }
                 }
               }}
               className="px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
@@ -856,9 +858,6 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                     setSelectedDayFilter(wd.dateStr);
                   } else {
                     setSelectedDayFilter((prev) => (prev === wd.dateStr ? null : wd.dateStr));
-                  }
-                  if (activeTab !== 'calendar') {
-                    setActiveTab('calendar');
                   }
                 }}
                 className={`px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all cursor-pointer border ${
