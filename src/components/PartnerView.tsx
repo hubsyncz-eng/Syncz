@@ -11,6 +11,11 @@ import {
   formatFullPortugueseDate,
   downloadICS,
 } from '../utils/dateUtils.ts';
+import {
+  BRAZILIAN_STATES,
+  CITIES_BY_STATE_FALLBACK,
+  fetchCitiesByState,
+} from '../utils/brazilLocations.ts';
 import { SlotCard } from './SlotCard.tsx';
 import {
   CalendarDays,
@@ -416,13 +421,60 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
   const [editingEmp, setEditingEmp] = useState<ConstrutoraEmpreendimento | null>(null);
   const [empName, setEmpName] = useState('');
-  const [empCity, setEmpCity] = useState('');
+  const [empState, setEmpState] = useState('SP');
+  const [empCitiesList, setEmpCitiesList] = useState<string[]>(
+    CITIES_BY_STATE_FALLBACK['SP'] || ['São Paulo']
+  );
+  const [empCity, setEmpCity] = useState('São Paulo');
   const [empAddress, setEmpAddress] = useState('');
   const [empDescription, setEmpDescription] = useState('');
   const [empSubmitting, setEmpSubmitting] = useState(false);
   const [empDeleting, setEmpDeleting] = useState(false);
   const [confirmEmpDelete, setConfirmEmpDelete] = useState(false);
   const [empError, setEmpError] = useState<string | null>(null);
+
+  const formatTitleCaseWords = (value: string) => {
+    return value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(
+        (word) =>
+          word.charAt(0).toLocaleUpperCase('pt-BR') +
+          word.slice(1).toLocaleLowerCase('pt-BR')
+      )
+      .join(' ');
+  };
+
+  useEffect(() => {
+    if (!isEmpModalOpen) return;
+    let active = true;
+    const fallback = CITIES_BY_STATE_FALLBACK[empState] || [];
+    setEmpCitiesList(fallback);
+    if (fallback.length > 0 && !fallback.includes(empCity)) {
+      setEmpCity(fallback[0]);
+    }
+
+    fetchCitiesByState(empState).then((list) => {
+      if (!active || list.length === 0) return;
+      setEmpCitiesList(list);
+      setEmpCity((prev) => (list.includes(prev) ? prev : list[0]));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [empState, isEmpModalOpen]);
+
+  const handleEmpStateChange = (newUf: string) => {
+    setEmpState(newUf);
+    const fallback = CITIES_BY_STATE_FALLBACK[newUf] || [];
+    if (fallback.length > 0) {
+      setEmpCity(fallback[0]);
+    } else {
+      setEmpCity('');
+    }
+  };
 
   const construtoraEmpreendimentos = useMemo(() => {
     const list = Array.isArray(activePartner.empreendimentos) ? activePartner.empreendimentos : [];
@@ -432,9 +484,13 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   }, [activePartner.empreendimentos]);
 
   const openNewEmpModal = () => {
+    const defaultUf = 'SP';
+    const defaultCities = CITIES_BY_STATE_FALLBACK[defaultUf] || ['São Paulo'];
     setEditingEmp(null);
     setEmpName('');
-    setEmpCity('');
+    setEmpState(defaultUf);
+    setEmpCitiesList(defaultCities);
+    setEmpCity(defaultCities[0] || '');
     setEmpAddress('');
     setEmpDescription('');
     setConfirmEmpDelete(false);
@@ -443,9 +499,17 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   };
 
   const openEditEmpModal = (emp: ConstrutoraEmpreendimento) => {
+    const initialUf = emp.state || 'SP';
+    const fallbackCities = CITIES_BY_STATE_FALLBACK[initialUf] || [];
     setEditingEmp(emp);
     setEmpName(emp.name || '');
-    setEmpCity(emp.city || '');
+    setEmpState(initialUf);
+    setEmpCitiesList(
+      emp.city && !fallbackCities.includes(emp.city)
+        ? [emp.city, ...fallbackCities]
+        : fallbackCities
+    );
+    setEmpCity(emp.city || fallbackCities[0] || '');
     setEmpAddress(emp.address || '');
     setEmpDescription(emp.description || '');
     setConfirmEmpDelete(false);
@@ -463,6 +527,12 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     setEmpSubmitting(true);
     setEmpError(null);
 
+    const formattedName = formatTitleCaseWords(empName);
+    const formattedAddress = empAddress.trim() ? formatTitleCaseWords(empAddress) : '';
+    const formattedDescription = empDescription.trim()
+      ? formatTitleCaseWords(empDescription)
+      : '';
+
     try {
       const currentList = Array.isArray(activePartner.empreendimentos)
         ? activePartner.empreendimentos
@@ -474,20 +544,22 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
           item.id === editingEmp.id
             ? {
                 ...item,
-                name: empName.trim(),
-                city: empCity.trim(),
-                address: empAddress.trim(),
-                description: empDescription.trim(),
+                name: formattedName,
+                state: empState,
+                city: empCity,
+                address: formattedAddress,
+                description: formattedDescription,
               }
             : item
         );
       } else {
         const newEmp: ConstrutoraEmpreendimento = {
           id: `emp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-          name: empName.trim(),
-          city: empCity.trim(),
-          address: empAddress.trim(),
-          description: empDescription.trim(),
+          name: formattedName,
+          state: empState,
+          city: empCity,
+          address: formattedAddress,
+          description: formattedDescription,
           createdAt: new Date().toISOString(),
         };
         nextList = [...currentList, newEmp];
@@ -577,24 +649,29 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-2.5">
-            {construtoraEmpreendimentos.map((emp) => (
-              <div
-                key={emp.id}
-                onClick={() => openEditEmpModal(emp)}
-                className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
-              >
-                <div className="min-w-0">
-                  <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
-                    {emp.name}
-                  </h4>
-                  {(emp.city || emp.address) && (
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">
-                      {[emp.city, emp.address].filter(Boolean).join(' • ')}
-                    </p>
-                  )}
+            {construtoraEmpreendimentos.map((emp) => {
+              const locationLabel = emp.city
+                ? `${emp.city}${emp.state ? `/${emp.state}` : ''}`
+                : emp.state || '';
+              return (
+                <div
+                  key={emp.id}
+                  onClick={() => openEditEmpModal(emp)}
+                  className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
+                      {emp.name}
+                    </h4>
+                    {(locationLabel || emp.address) && (
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {[locationLabel, emp.address].filter(Boolean).join(' • ')}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -636,7 +713,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                     required
                     value={empName}
                     onChange={(e) => setEmpName(e.target.value)}
-                    placeholder="Ex: Residencial Parque das Águas"
+                    placeholder="Ex: Residencial Parque Das Águas"
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
                   />
                 </div>
@@ -644,29 +721,50 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Cidade / UF
+                      Estado (UF)
                     </label>
-                    <input
-                      type="text"
-                      value={empCity}
-                      onChange={(e) => setEmpCity(e.target.value)}
-                      placeholder="Ex: Brasília / DF"
+                    <select
+                      value={empState}
+                      onChange={(e) => handleEmpStateChange(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
-                    />
+                    >
+                      {BRAZILIAN_STATES.map((st) => (
+                        <option key={st.uf} value={st.uf}>
+                          {st.uf} - {st.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Endereço / Localização
+                      Cidade
                     </label>
-                    <input
-                      type="text"
-                      value={empAddress}
-                      onChange={(e) => setEmpAddress(e.target.value)}
-                      placeholder="Ex: Setor Noroeste, Quadra 10"
+                    <select
+                      value={empCity}
+                      onChange={(e) => setEmpCity(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
-                    />
+                    >
+                      {empCitiesList.map((cityName) => (
+                        <option key={cityName} value={cityName}>
+                          {cityName}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Endereço / Localização
+                  </label>
+                  <input
+                    type="text"
+                    value={empAddress}
+                    onChange={(e) => setEmpAddress(e.target.value)}
+                    placeholder="Ex: Setor Noroeste, Quadra 10"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                  />
                 </div>
 
                 <div>

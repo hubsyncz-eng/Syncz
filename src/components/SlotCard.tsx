@@ -320,9 +320,13 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               }
               title={
                 booking.propertyType === 'Empreendimento'
-                  ? booking.construtoraName
-                    ? `Empreendimento • ${booking.construtoraName}`
-                    : 'Empreendimento'
+                  ? [
+                      'Empreendimento',
+                      booking.construtoraName,
+                      booking.empreendimentoName,
+                    ]
+                      .filter(Boolean)
+                      .join(' • ')
                   : 'Imóvel Individual'
               }
             >

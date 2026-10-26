@@ -137,6 +137,30 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedConstrutoraId, setSelectedConstrutoraId] = useState<string>(initialConstrutoraId);
   const selectedConstrutoraFromList = construtorasList.find((c) => c.id === selectedConstrutoraId);
 
+  const empreendimentosList = React.useMemo(() => {
+    const raw = selectedConstrutoraFromList?.empreendimentos;
+    if (!Array.isArray(raw)) return [];
+    return [...raw].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+    );
+  }, [selectedConstrutoraFromList]);
+
+  const initialEmpreendimentoId = existingBooking
+    ? empreendimentosList.find(
+        (emp) =>
+          emp.id === existingBooking.empreendimentoId ||
+          emp.name === existingBooking.empreendimentoName
+      )?.id || (empreendimentosList.length === 1 ? empreendimentosList[0].id : '')
+    : empreendimentosList.length === 1
+      ? empreendimentosList[0].id
+      : '';
+
+  const [selectedEmpreendimentoId, setSelectedEmpreendimentoId] =
+    useState<string>(initialEmpreendimentoId);
+  const selectedEmpreendimentoFromList = empreendimentosList.find(
+    (emp) => emp.id === selectedEmpreendimentoId
+  );
+
   React.useEffect(() => {
     if (
       selectedConstrutoraId &&
@@ -147,6 +171,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setSelectedConstrutoraId(construtorasList[0].id);
     }
   }, [construtorasList, selectedConstrutoraId]);
+
+  React.useEffect(() => {
+    if (
+      selectedEmpreendimentoId &&
+      !empreendimentosList.some((emp) => emp.id === selectedEmpreendimentoId)
+    ) {
+      setSelectedEmpreendimentoId(
+        empreendimentosList.length === 1 ? empreendimentosList[0].id : ''
+      );
+    } else if (!selectedEmpreendimentoId && empreendimentosList.length === 1) {
+      setSelectedEmpreendimentoId(empreendimentosList[0].id);
+    }
+  }, [empreendimentosList, selectedEmpreendimentoId]);
 
   const [fidelizacaoValor, setFidelizacaoValor] = useState(
     existingBooking?.fidelizacaoValor || ''
@@ -244,6 +281,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       propertyType === 'Empreendimento' ? selectedConstrutoraFromList?.id || '' : '';
     const finalConstrutoraName =
       propertyType === 'Empreendimento' ? selectedConstrutoraFromList?.name || '' : '';
+    const finalEmpreendimentoId =
+      propertyType === 'Empreendimento' ? selectedEmpreendimentoFromList?.id || '' : '';
+    const finalEmpreendimentoName =
+      propertyType === 'Empreendimento' ? selectedEmpreendimentoFromList?.name || '' : '';
 
     try {
       if (existingBooking) {
@@ -253,6 +294,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           propertyType,
           construtoraId: finalConstrutoraId,
           construtoraName: finalConstrutoraName,
+          empreendimentoId: finalEmpreendimentoId,
+          empreendimentoName: finalEmpreendimentoName,
           fidelizacaoValor: fidelizacaoValor.trim(),
           fidelizacaoResponsavel,
           isConstrutora:
@@ -287,6 +330,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         propertyType,
         construtoraId: finalConstrutoraId || undefined,
         construtoraName: finalConstrutoraName || undefined,
+        empreendimentoId: finalEmpreendimentoId || undefined,
+        empreendimentoName: finalEmpreendimentoName || undefined,
         fidelizacaoValor: fidelizacaoValor.trim(),
         fidelizacaoResponsavel,
         isConstrutora:
@@ -429,30 +474,66 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
             {/* Caixa de seleção de Construtora quando Empreendimento estiver marcado */}
             {propertyType === 'Empreendimento' && (
-              <div className="mt-3 animate-in fade-in duration-150">
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Construtora {construtorasList.length > 0 ? '*' : ''}
-                </label>
-                <div className="relative">
-                  <Building className="w-4 h-4 text-amber-400 absolute left-3 top-3 pointer-events-none" />
-                  <select
-                    required={construtorasList.length > 0}
-                    disabled={construtorasList.length === 0}
-                    value={selectedConstrutoraId}
-                    onChange={(e) => setSelectedConstrutoraId(e.target.value)}
-                    className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <option value="" disabled>
-                      {construtorasList.length > 0 ? 'Selecione uma construtora...' : ''}
-                    </option>
-                    {construtorasList.map((construtora) => (
-                      <option key={construtora.id} value={construtora.id}>
-                        {construtora.name}
+              <div className="mt-3 space-y-3 animate-in fade-in duration-150">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Construtora {construtorasList.length > 0 ? '*' : ''}
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 text-amber-400 absolute left-3 top-3 pointer-events-none" />
+                    <select
+                      required={construtorasList.length > 0}
+                      disabled={construtorasList.length === 0}
+                      value={selectedConstrutoraId}
+                      onChange={(e) => {
+                        setSelectedConstrutoraId(e.target.value);
+                        setSelectedEmpreendimentoId('');
+                      }}
+                      className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <option value="" disabled>
+                        {construtorasList.length > 0 ? 'Selecione uma construtora...' : ''}
                       </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
+                      {construtorasList.map((construtora) => (
+                        <option key={construtora.id} value={construtora.id}>
+                          {construtora.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
+                  </div>
                 </div>
+
+                {/* Lista de Empreendimentos cadastrados pela Construtora selecionada */}
+                {selectedConstrutoraFromList && (
+                  <div className="animate-in fade-in duration-150">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Empreendimento
+                    </label>
+                    <div className="relative">
+                      <Building2 className="w-4 h-4 text-amber-400 absolute left-3 top-3 pointer-events-none" />
+                      <select
+                        disabled={empreendimentosList.length === 0}
+                        value={selectedEmpreendimentoId}
+                        onChange={(e) => setSelectedEmpreendimentoId(e.target.value)}
+                        className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <option value="">
+                          {empreendimentosList.length > 0
+                            ? 'Selecione um empreendimento...'
+                            : 'Nenhum empreendimento cadastrado nesta construtora'}
+                        </option>
+                        {empreendimentosList.map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.name}
+                            {emp.city ? ` — ${emp.city}${emp.state ? `/${emp.state}` : ''}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 top-3 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

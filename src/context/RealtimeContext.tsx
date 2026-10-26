@@ -103,6 +103,8 @@ interface RealtimeContextValue {
     propertyType?: PropertyType;
     construtoraId?: string;
     construtoraName?: string;
+    empreendimentoId?: string;
+    empreendimentoName?: string;
     fidelizacaoValor?: string;
     fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
     isConstrutora?: boolean;
@@ -119,6 +121,8 @@ interface RealtimeContextValue {
       propertyType: PropertyType;
       construtoraId?: string;
       construtoraName?: string;
+      empreendimentoId?: string;
+      empreendimentoName?: string;
       fidelizacaoValor?: string;
       fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
       isConstrutora?: boolean;
@@ -1486,6 +1490,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     propertyType?: PropertyType;
     construtoraId?: string;
     construtoraName?: string;
+    empreendimentoId?: string;
+    empreendimentoName?: string;
     fidelizacaoValor?: string;
     fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
     isConstrutora?: boolean;
@@ -1572,6 +1578,12 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...(finalPropertyType === 'Empreendimento' && bookingData.construtoraName
         ? { construtoraName: bookingData.construtoraName }
         : {}),
+      ...(finalPropertyType === 'Empreendimento' && bookingData.empreendimentoId
+        ? { empreendimentoId: bookingData.empreendimentoId }
+        : {}),
+      ...(finalPropertyType === 'Empreendimento' && bookingData.empreendimentoName
+        ? { empreendimentoName: bookingData.empreendimentoName }
+        : {}),
       fidelizacaoValor: bookingData.fidelizacaoValor || '',
       ...(bookingData.fidelizacaoResponsavel
         ? { fidelizacaoResponsavel: bookingData.fidelizacaoResponsavel }
@@ -1633,6 +1645,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       propertyType: PropertyType;
       construtoraId?: string;
       construtoraName?: string;
+      empreendimentoId?: string;
+      empreendimentoName?: string;
       fidelizacaoValor?: string;
       fidelizacaoResponsavel?: FidelizacaoResponsavel | '';
       isConstrutora?: boolean;
@@ -1691,6 +1705,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (updateData.propertyType !== 'Empreendimento') {
       delete updatedBooking.construtoraId;
       delete updatedBooking.construtoraName;
+      delete updatedBooking.empreendimentoId;
+      delete updatedBooking.empreendimentoName;
     } else {
       if (updateData.construtoraId !== undefined) {
         if (updateData.construtoraId) {
@@ -1704,6 +1720,20 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           updatedBooking.construtoraName = updateData.construtoraName;
         } else {
           delete updatedBooking.construtoraName;
+        }
+      }
+      if (updateData.empreendimentoId !== undefined) {
+        if (updateData.empreendimentoId) {
+          updatedBooking.empreendimentoId = updateData.empreendimentoId;
+        } else {
+          delete updatedBooking.empreendimentoId;
+        }
+      }
+      if (updateData.empreendimentoName !== undefined) {
+        if (updateData.empreendimentoName) {
+          updatedBooking.empreendimentoName = updateData.empreendimentoName;
+        } else {
+          delete updatedBooking.empreendimentoName;
         }
       }
     }

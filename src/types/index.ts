@@ -94,6 +94,8 @@ export interface Booking {
   propertyType?: PropertyType;
   construtoraId?: string;
   construtoraName?: string;
+  empreendimentoId?: string;
+  empreendimentoName?: string;
   fidelizacaoValor?: string;
   fidelizacaoResponsavel?: FidelizacaoResponsavel;
   isConstrutora?: boolean;
@@ -113,6 +115,7 @@ export interface Booking {
 export interface ConstrutoraEmpreendimento {
   id: string;
   name: string;
+  state?: string;
   city?: string;
   address?: string;
   description?: string;
