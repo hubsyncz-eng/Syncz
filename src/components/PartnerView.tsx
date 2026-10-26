@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRealtime } from '../context/RealtimeContext.tsx';
-import { TimeSlot, Booking } from '../types/index.ts';
+import { TimeSlot, Booking, ConstrutoraEmpreendimento } from '../types/index.ts';
 import {
   DAYS_OF_WEEK,
   getMonday,
@@ -35,6 +35,11 @@ import {
   FileText,
   Edit3,
   ArrowLeft,
+  Search,
+  X,
+  PlusCircle,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 
 interface PartnerViewProps {
@@ -62,6 +67,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     setCurrentPartner,
     cancelBooking,
     openPartnerModal,
+    updatePartner,
   } = useRealtime();
 
   const isConstrutora = Boolean(
@@ -176,8 +182,25 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   // Filters (none selected by default -> shows all days)
   const [selectedDayFilter, setSelectedDayFilter] = useState<string | null>(null);
 
+  // Search filter by partner, construtora, client name, or client CPF
+  const [searchTerm, setSearchTerm] = useState('');
+
   // Cancel dialog
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+
+  const matchesBookingSearch = (b: Booking | undefined, queryStr: string): boolean => {
+    const rawTerm = queryStr.trim().toLowerCase();
+    if (!rawTerm) return true;
+    if (!b) return false;
+    const cleanCpfTerm = rawTerm.replace(/\D/g, '');
+    const partnerMatch = (b.partnerName || '').toLowerCase().includes(rawTerm);
+    const construtoraMatch = (b.construtoraName || '').toLowerCase().includes(rawTerm);
+    const clientNameMatch = (b.clientName || '').toLowerCase().includes(rawTerm);
+    const clientCpfMatch =
+      (b.clientCpf || '').toLowerCase().includes(rawTerm) ||
+      (cleanCpfTerm.length > 0 && (b.clientCpf || '').replace(/\D/g, '').includes(cleanCpfTerm));
+    return partnerMatch || construtoraMatch || clientNameMatch || clientCpfMatch;
+  };
 
   // Calculate target date when in daily (Hoje) mode
   const targetDayDate = useMemo(() => {
@@ -258,9 +281,18 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   const effectiveDayFilter = isTodayMode ? targetDayDate.dateStr : selectedDayFilter;
 
   const filteredSlots = useMemo(() => {
-    if (!effectiveDayFilter) return weekVisibleSlots;
-    return weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
-  }, [weekVisibleSlots, effectiveDayFilter]);
+    const dayFiltered = !effectiveDayFilter
+      ? weekVisibleSlots
+      : weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
+
+    if (!searchTerm.trim()) return dayFiltered;
+
+    return dayFiltered.filter((slot) => {
+      if (slot.status !== 'booked' || !slot.bookingId) return false;
+      const booking = bookings.find((b) => b.id === slot.bookingId && b.status !== 'cancelled');
+      return matchesBookingSearch(booking, searchTerm);
+    });
+  }, [weekVisibleSlots, effectiveDayFilter, searchTerm, bookings]);
 
   // Available slots count (only starting from the next day for partners and for the selected agency/day/week)
   const availableThisWeekCount = useMemo(() => {
@@ -268,7 +300,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     return filteredSlots.filter((s) => s.status === 'available').length;
   }, [filteredSlots, selectedAgencyId, isSelectedAgencyAllowed]);
 
-  // Partner's / Construtora's bookings filtered by selected agency, week, or specific day and ordered by date and time
+  // Partner's / Construtora's bookings filtered by selected agency, week, or specific day and search term, ordered by date and time
   const myBookings = useMemo(() => {
     return bookings
       .filter((b) => {
@@ -288,14 +320,17 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
         }
 
         if (isConstrutora) {
-          return (
+          const belongsToConstrutora =
             b.partnerId === activePartner.id ||
             b.construtoraId === activePartner.id ||
             (!b.construtoraId &&
-              (b.fidelizacaoResponsavel === 'Construtora' || Boolean(b.isConstrutora)))
-          );
+              (b.fidelizacaoResponsavel === 'Construtora' || Boolean(b.isConstrutora)));
+          if (!belongsToConstrutora) return false;
+        } else {
+          if (b.partnerId !== activePartner.id) return false;
         }
-        return b.partnerId === activePartner.id;
+
+        return matchesBookingSearch(b, searchTerm);
       })
       .sort((a, b) => {
         const slotA = slots.find((sl) => sl.id === a.slotId);
@@ -316,6 +351,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     allowedAgencies,
     effectiveDayFilter,
     weekDateSet,
+    searchTerm,
   ]);
 
   // Group all week visible slots by date (to filter out days with no schedule)
@@ -375,6 +411,343 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     }
     if (onBookSlot) onBookSlot(slot, booking);
   };
+
+  // Empreendimentos state for Construtora view
+  const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
+  const [editingEmp, setEditingEmp] = useState<ConstrutoraEmpreendimento | null>(null);
+  const [empName, setEmpName] = useState('');
+  const [empCity, setEmpCity] = useState('');
+  const [empAddress, setEmpAddress] = useState('');
+  const [empDescription, setEmpDescription] = useState('');
+  const [empSubmitting, setEmpSubmitting] = useState(false);
+  const [empDeleting, setEmpDeleting] = useState(false);
+  const [confirmEmpDelete, setConfirmEmpDelete] = useState(false);
+  const [empError, setEmpError] = useState<string | null>(null);
+
+  const construtoraEmpreendimentos = useMemo(() => {
+    const list = Array.isArray(activePartner.empreendimentos) ? activePartner.empreendimentos : [];
+    return [...list].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+    );
+  }, [activePartner.empreendimentos]);
+
+  const openNewEmpModal = () => {
+    setEditingEmp(null);
+    setEmpName('');
+    setEmpCity('');
+    setEmpAddress('');
+    setEmpDescription('');
+    setConfirmEmpDelete(false);
+    setEmpError(null);
+    setIsEmpModalOpen(true);
+  };
+
+  const openEditEmpModal = (emp: ConstrutoraEmpreendimento) => {
+    setEditingEmp(emp);
+    setEmpName(emp.name || '');
+    setEmpCity(emp.city || '');
+    setEmpAddress(emp.address || '');
+    setEmpDescription(emp.description || '');
+    setConfirmEmpDelete(false);
+    setEmpError(null);
+    setIsEmpModalOpen(true);
+  };
+
+  const handleSaveEmp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!empName.trim()) {
+      setEmpError('Por favor informe o nome do empreendimento.');
+      return;
+    }
+
+    setEmpSubmitting(true);
+    setEmpError(null);
+
+    try {
+      const currentList = Array.isArray(activePartner.empreendimentos)
+        ? activePartner.empreendimentos
+        : [];
+      let nextList: ConstrutoraEmpreendimento[];
+
+      if (editingEmp) {
+        nextList = currentList.map((item) =>
+          item.id === editingEmp.id
+            ? {
+                ...item,
+                name: empName.trim(),
+                city: empCity.trim(),
+                address: empAddress.trim(),
+                description: empDescription.trim(),
+              }
+            : item
+        );
+      } else {
+        const newEmp: ConstrutoraEmpreendimento = {
+          id: `emp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          name: empName.trim(),
+          city: empCity.trim(),
+          address: empAddress.trim(),
+          description: empDescription.trim(),
+          createdAt: new Date().toISOString(),
+        };
+        nextList = [...currentList, newEmp];
+      }
+
+      await updatePartner(activePartner.id, {
+        ...activePartner,
+        empreendimentos: nextList,
+      });
+      setIsEmpModalOpen(false);
+    } catch (err: any) {
+      setEmpError(err.message || 'Erro ao salvar empreendimento.');
+    } finally {
+      setEmpSubmitting(false);
+    }
+  };
+
+  const handleDeleteEmp = async () => {
+    if (!editingEmp) return;
+    if (!confirmEmpDelete) {
+      setConfirmEmpDelete(true);
+      return;
+    }
+
+    setEmpDeleting(true);
+    setEmpError(null);
+    try {
+      const currentList = Array.isArray(activePartner.empreendimentos)
+        ? activePartner.empreendimentos
+        : [];
+      const nextList = currentList.filter((item) => item.id !== editingEmp.id);
+      await updatePartner(activePartner.id, {
+        ...activePartner,
+        empreendimentos: nextList,
+      });
+      setIsEmpModalOpen(false);
+    } catch (err: any) {
+      setEmpError(err.message || 'Erro ao excluir empreendimento.');
+    } finally {
+      setEmpDeleting(false);
+    }
+  };
+
+  if (isConstrutora && construtoraActiveView === 'empreendimentos') {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3.5 pt-1">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Empreendimentos
+            </h2>
+            <p className="text-sm text-slate-400 mt-1 w-full leading-relaxed">
+              Gerencie os empreendimentos cadastrados na construtora.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setConstrutoraActiveView('schedule')}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar para Agenda
+            </button>
+
+            <button
+              type="button"
+              onClick={openNewEmpModal}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/25 transition-all cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Novo Empreendimento
+            </button>
+          </div>
+        </div>
+
+        {construtoraEmpreendimentos.length === 0 ? (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center">
+            <Building2 className="w-9 h-9 text-amber-400 mx-auto mb-2.5 opacity-80" />
+            <h4 className="text-sm sm:text-base font-bold text-white">
+              Nenhum empreendimento cadastrado
+            </h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+              Clique em &ldquo;Novo Empreendimento&rdquo; para cadastrar os empreendimentos da construtora.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {construtoraEmpreendimentos.map((emp) => (
+              <div
+                key={emp.id}
+                onClick={() => openEditEmpModal(emp)}
+                className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+              >
+                <div className="min-w-0">
+                  <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
+                    {emp.name}
+                  </h4>
+                  {(emp.city || emp.address) && (
+                    <p className="text-xs text-slate-400 mt-0.5 truncate">
+                      {[emp.city, emp.address].filter(Boolean).join(' • ')}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isEmpModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in">
+            <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 sm:p-7 text-white shadow-2xl relative my-auto">
+              <button
+                type="button"
+                onClick={() => setIsEmpModalOpen(false)}
+                disabled={empSubmitting || empDeleting}
+                className="absolute top-5 right-5 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 pr-8 pb-4 border-b border-slate-800">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">
+                    {editingEmp ? 'Editar Empreendimento' : 'Novo Empreendimento'}
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    {editingEmp
+                      ? 'Altere os dados do empreendimento ou exclua o cadastro'
+                      : 'Cadastre um novo empreendimento na construtora'}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveEmp} className="mt-4 space-y-3.5 text-xs sm:text-sm">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Nome do Empreendimento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={empName}
+                    onChange={(e) => setEmpName(e.target.value)}
+                    placeholder="Ex: Residencial Parque das Águas"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Cidade / UF
+                    </label>
+                    <input
+                      type="text"
+                      value={empCity}
+                      onChange={(e) => setEmpCity(e.target.value)}
+                      placeholder="Ex: Brasília / DF"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Endereço / Localização
+                    </label>
+                    <input
+                      type="text"
+                      value={empAddress}
+                      onChange={(e) => setEmpAddress(e.target.value)}
+                      placeholder="Ex: Setor Noroeste, Quadra 10"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Observações / Descrição
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={empDescription}
+                    onChange={(e) => setEmpDescription(e.target.value)}
+                    placeholder="Informações adicionais sobre o empreendimento..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm resize-none"
+                  />
+                </div>
+
+                {empError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                    {empError}
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+                  {editingEmp ? (
+                    <button
+                      type="button"
+                      disabled={empSubmitting || empDeleting}
+                      onClick={handleDeleteEmp}
+                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 ${
+                        confirmEmpDelete
+                          ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30'
+                          : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30'
+                      }`}
+                    >
+                      {empDeleting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Excluindo...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          {confirmEmpDelete ? 'Confirmar Exclusão' : 'Excluir Cadastro'}
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={empSubmitting || empDeleting}
+                      onClick={() => setIsEmpModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={empSubmitting || empDeleting}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/30 cursor-pointer disabled:opacity-50"
+                  >
+                    {empSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        {editingEmp ? 'Salvar Alterações' : 'Cadastrar Empreendimento'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (isConstrutora && construtoraActiveView === 'partners') {
     return (
@@ -448,16 +821,6 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Olá, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">{activePartner.name}</span>
             </h2>
-            {!isConstrutora && (
-              <button
-                type="button"
-                onClick={() => openPartnerModal(activePartner)}
-                title="Editar Meus Dados Cadastrais"
-                className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/40 transition-all cursor-pointer shadow-sm"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-            )}
           </div>
           <p className="text-sm text-slate-400 mt-1.5 w-full leading-relaxed">
             {isConstrutora
@@ -469,6 +832,28 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
 
       {/* Week Tag + Day Filter Chips + View Buttons Card */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-2.5 sm:p-3.5 space-y-2.5 text-xs">
+        {/* Search Bar */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar agendamento por parceiro, construtora, nome ou CPF do cliente..."
+            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border border-cyan-500/45 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              title="Limpar busca"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         {/* Agency Selector above Semana Atual (without divider line) */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <label

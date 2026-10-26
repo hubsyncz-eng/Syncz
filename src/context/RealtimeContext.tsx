@@ -60,8 +60,8 @@ interface RealtimeContextValue {
   ) => void;
   agencyActiveView: 'schedule' | 'partners' | 'construtoras' | 'users';
   setAgencyActiveView: (view: 'schedule' | 'partners' | 'construtoras' | 'users') => void;
-  construtoraActiveView: 'schedule' | 'partners';
-  setConstrutoraActiveView: (view: 'schedule' | 'partners') => void;
+  construtoraActiveView: 'schedule' | 'partners' | 'empreendimentos';
+  setConstrutoraActiveView: (view: 'schedule' | 'partners' | 'empreendimentos') => void;
   loginWithCredentials: (
     username: string,
     password: string,
@@ -374,10 +374,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'schedule' | 'partners' | 'construtoras' | 'users'
   >('schedule');
 
-  // Active sub-view inside Construtora perspective ('schedule' | 'partners')
-  const [construtoraActiveView, setConstrutoraActiveView] = useState<'schedule' | 'partners'>(
-    'schedule'
-  );
+  // Active sub-view inside Construtora perspective ('schedule' | 'partners' | 'empreendimentos')
+  const [construtoraActiveView, setConstrutoraActiveView] = useState<
+    'schedule' | 'partners' | 'empreendimentos'
+  >('schedule');
 
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
@@ -620,92 +620,61 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (!db) return;
 
-    let unsubscribers: Array<() => void> = [];
-    let isCancelled = false;
-
-    async function initFirestoreSync() {
-      try {
-        const [agSnap, ptSnap, csSnap, slSnap, bkSnap, actSnap] = await Promise.all([
-          getDocs(collection(db, 'agencies')),
-          getDocs(collection(db, 'partners')),
-          getDocs(collection(db, 'consultants')),
-          getDocs(collection(db, 'slots')),
-          getDocs(collection(db, 'bookings')),
-          getDocs(collection(db, 'activities')),
-        ]);
-
-        if (isCancelled) return;
-
-        setAgencies(agSnap.docs.map((d) => d.data() as Agency));
-        setPartners(ptSnap.docs.map((d) => d.data() as PartnerProfile));
-        setConsultants(csSnap.docs.map((d) => d.data() as Consultant));
-        setSlots(slSnap.docs.map((d) => d.data() as TimeSlot));
-        setBookings(bkSnap.docs.map((d) => d.data() as Booking));
-
-        const loadedActs = actSnap.docs
-          .map((d) => d.data() as ActivityEvent)
-          .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-        setActivities(loadedActs);
-
-        setIsConnected(true);
-
-        // Subscribe to real-time updates on all collections in the definitive database
-        unsubscribers = [
-          onSnapshot(
-            collection(db, 'agencies'),
-            (snap) => {
-              setAgencies(snap.docs.map((d) => d.data() as Agency));
-            },
-            () => {}
-          ),
-          onSnapshot(
-            collection(db, 'partners'),
-            (snap) => {
-              setPartners(snap.docs.map((d) => d.data() as PartnerProfile));
-            },
-            () => {}
-          ),
-          onSnapshot(
-            collection(db, 'consultants'),
-            (snap) => {
-              setConsultants(snap.docs.map((d) => d.data() as Consultant));
-            },
-            () => {}
-          ),
-          onSnapshot(
-            collection(db, 'slots'),
-            (snap) => {
-              setSlots(snap.docs.map((d) => d.data() as TimeSlot));
-            },
-            () => {}
-          ),
-          onSnapshot(
-            collection(db, 'bookings'),
-            (snap) => {
-              setBookings(snap.docs.map((d) => d.data() as Booking));
-            },
-            () => {}
-          ),
-          onSnapshot(
-            collection(db, 'activities'),
-            (snap) => {
-              const sorted = snap.docs
-                .map((d) => d.data() as ActivityEvent)
-                .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-              setActivities(sorted);
-            },
-            () => {}
-          ),
-        ];
-      } catch (err) {
-        console.warn('[Firestore] Real-time sync fallback to local/REST:', err);
-      }
-    }
-
-    initFirestoreSync();
+    const unsubscribers: Array<() => void> = [
+      onSnapshot(
+        collection(db, 'agencies'),
+        (snap) => {
+          setAgencies(snap.docs.map((d) => d.data() as Agency));
+          setIsConnected(true);
+        },
+        () => {}
+      ),
+      onSnapshot(
+        collection(db, 'partners'),
+        (snap) => {
+          setPartners(snap.docs.map((d) => d.data() as PartnerProfile));
+          setIsConnected(true);
+        },
+        () => {}
+      ),
+      onSnapshot(
+        collection(db, 'consultants'),
+        (snap) => {
+          setConsultants(snap.docs.map((d) => d.data() as Consultant));
+          setIsConnected(true);
+        },
+        () => {}
+      ),
+      onSnapshot(
+        collection(db, 'slots'),
+        (snap) => {
+          setSlots(snap.docs.map((d) => d.data() as TimeSlot));
+          setIsConnected(true);
+        },
+        () => {}
+      ),
+      onSnapshot(
+        collection(db, 'bookings'),
+        (snap) => {
+          setBookings(snap.docs.map((d) => d.data() as Booking));
+          setIsConnected(true);
+        },
+        () => {}
+      ),
+      onSnapshot(
+        collection(db, 'activities'),
+        (snap) => {
+          const sorted = snap.docs
+            .map((d) => d.data() as ActivityEvent)
+            .sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          setActivities(sorted);
+          setIsConnected(true);
+        },
+        () => {}
+      ),
+    ];
 
     return () => {
-      isCancelled = true;
       unsubscribers.forEach((unsub) => unsub());
     };
   }, []);
@@ -1202,20 +1171,28 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           : Array.isArray(apiRes.data.allowedConstrutoraIds)
             ? apiRes.data.allowedConstrutoraIds
             : existing?.allowedConstrutoraIds || [],
+        empreendimentos: Array.isArray(data.empreendimentos)
+          ? data.empreendimentos
+          : Array.isArray(apiRes.data.empreendimentos)
+            ? apiRes.data.empreendimentos
+            : existing?.empreendimentos || [],
       };
     } else {
       if (!existing) throw new Error('Parceiro não encontrado.');
-      if (!data.name || !data.email || !data.cnpj) {
+      const nextName = data.name !== undefined ? data.name.trim() : existing.name;
+      const nextEmail = data.email !== undefined ? data.email.trim() : existing.email;
+      const nextCnpj = data.cnpj !== undefined ? data.cnpj.trim() : existing.cnpj;
+      if (!nextName || !nextEmail || !nextCnpj) {
         throw new Error('Preencha todos os campos obrigatórios do parceiro.');
       }
       updatedPartner = {
         ...existing,
-        name: data.name.trim(),
+        name: nextName,
         segment: data.segment || existing.segment || 'Parceiro Negocial',
-        representative: data.representative || data.name.trim(),
-        email: data.email.trim(),
+        representative: data.representative || existing.representative || nextName,
+        email: nextEmail,
         phone: data.phone !== undefined ? data.phone.trim() : existing.phone,
-        cnpj: data.cnpj.trim(),
+        cnpj: nextCnpj,
         password: data.password || existing.password || 'parceiro123',
         allowedAgencyIds: Array.isArray(data.allowedAgencyIds)
           ? data.allowedAgencyIds
@@ -1223,6 +1200,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         allowedConstrutoraIds: Array.isArray(data.allowedConstrutoraIds)
           ? data.allowedConstrutoraIds
           : existing.allowedConstrutoraIds || [],
+        empreendimentos: Array.isArray(data.empreendimentos)
+          ? data.empreendimentos
+          : existing.empreendimentos || [],
       };
     }
 

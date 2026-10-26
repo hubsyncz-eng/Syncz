@@ -110,6 +110,15 @@ export interface Booking {
   cancelledAt?: string;
 }
 
+export interface ConstrutoraEmpreendimento {
+  id: string;
+  name: string;
+  city?: string;
+  address?: string;
+  description?: string;
+  createdAt?: string;
+}
+
 export interface PartnerProfile {
   id: string;
   name: string;
@@ -123,6 +132,7 @@ export interface PartnerProfile {
   password?: string;
   allowedAgencyIds?: string[];
   allowedConstrutoraIds?: string[];
+  empreendimentos?: ConstrutoraEmpreendimento[];
   createdAt?: string;
 }
 

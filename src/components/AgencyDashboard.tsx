@@ -27,6 +27,7 @@ import {
   Loader2,
   Trash2,
   Edit3,
+  Search,
 } from 'lucide-react';
 
 interface AgencyDashboardProps {
@@ -190,12 +191,26 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   // Day filter (none selected by default -> shows all days)
   const [selectedDayFilter, setSelectedDayFilter] = useState<string | null>(null);
 
-  // Search filter in bookings tab
-  const [searchTerm] = useState('');
+  // Search filter by partner, construtora, client name, or client CPF
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Cancel booking modal state
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+
+  const matchesBookingSearch = (b: Booking | undefined, queryStr: string): boolean => {
+    const rawTerm = queryStr.trim().toLowerCase();
+    if (!rawTerm) return true;
+    if (!b) return false;
+    const cleanCpfTerm = rawTerm.replace(/\D/g, '');
+    const partnerMatch = (b.partnerName || '').toLowerCase().includes(rawTerm);
+    const construtoraMatch = (b.construtoraName || '').toLowerCase().includes(rawTerm);
+    const clientNameMatch = (b.clientName || '').toLowerCase().includes(rawTerm);
+    const clientCpfMatch =
+      (b.clientCpf || '').toLowerCase().includes(rawTerm) ||
+      (cleanCpfTerm.length > 0 && (b.clientCpf || '').replace(/\D/g, '').includes(cleanCpfTerm));
+    return partnerMatch || construtoraMatch || clientNameMatch || clientCpfMatch;
+  };
 
   // Calculate target date when in daily (Hoje) mode
   const targetDayDate = useMemo(() => {
@@ -249,9 +264,18 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
   // Filtered slots for calendar
   const filteredSlots = useMemo(() => {
-    if (!effectiveDayFilter) return weekVisibleSlots;
-    return weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
-  }, [weekVisibleSlots, effectiveDayFilter]);
+    const dayFiltered = !effectiveDayFilter
+      ? weekVisibleSlots
+      : weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
+
+    if (!searchTerm.trim()) return dayFiltered;
+
+    return dayFiltered.filter((slot) => {
+      if (slot.status !== 'booked' || !slot.bookingId) return false;
+      const booking = bookings.find((b) => b.id === slot.bookingId && b.status !== 'cancelled');
+      return matchesBookingSearch(booking, searchTerm);
+    });
+  }, [weekVisibleSlots, effectiveDayFilter, searchTerm, bookings]);
 
   // Available slots count considering current week/day filter
   const availableThisWeekCount = useMemo(() => {
@@ -293,7 +317,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return map;
   }, [filteredSlots, weekDays]);
 
-  // Confirmed bookings list filtered by current week/day filter and ordered by date and time
+  // Confirmed bookings list filtered by current week/day filter and search term, ordered by date and time
   const filteredBookings = useMemo(() => {
     return bookings
       .filter((b) => {
@@ -305,14 +329,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         } else {
           if (!weekDateSet.has(bookingDate)) return false;
         }
-        if (!searchTerm) return true;
-        const term = searchTerm.toLowerCase();
-        return (
-          b.partnerName.toLowerCase().includes(term) ||
-          b.protocol.toLowerCase().includes(term) ||
-          b.consultantName.toLowerCase().includes(term) ||
-          b.agendaTopic.toLowerCase().includes(term)
-        );
+        return matchesBookingSearch(b, searchTerm);
       })
       .sort((a, b) => {
         const slotA = slots.find((sl) => sl.id === a.slotId);
@@ -732,19 +749,6 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Olá, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">{agencyDisplayName}</span>
             </h2>
-            {!currentUser?.isAgencyUser && (
-              <button
-                type="button"
-                onClick={() => {
-                  const targetAgency = currentAgency || agencies.find((a) => a.id === currentUser?.agencyId) || agencies[0];
-                  openAgencyModal(targetAgency);
-                }}
-                title="Editar Cadastro da Agência"
-                className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-blue-400 border border-slate-800 hover:border-blue-500/40 transition-all cursor-pointer shadow-sm"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-            )}
           </div>
           <p className="text-sm text-slate-400 mt-1.5 w-full leading-relaxed">
             Gerencie os horários disponíveis. Os parceiros negociais reservam seus horários em tempo real.
@@ -754,6 +758,28 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
       {/* Week Tag + Day Filter Chips + View Buttons Card */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-2.5 sm:p-3.5 space-y-2.5 text-xs">
+        {/* Search Bar */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-cyan-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar agendamento por parceiro, construtora, nome ou CPF do cliente..."
+            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border border-cyan-500/45 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              title="Limpar busca"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         {/* Action Buttons: Horários em Lote & Horário Avulso - na linha acima da semana atual */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
           <button

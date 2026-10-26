@@ -38,6 +38,8 @@
         "password": { "type": "string", "maxLength": 100 },
         "badgeColor": { "type": "string", "maxLength": 50 },
         "allowedAgencyIds": { "type": "array" },
+        "allowedConstrutoraIds": { "type": "array" },
+        "empreendimentos": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "email"]

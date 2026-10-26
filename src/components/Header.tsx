@@ -9,6 +9,8 @@ import {
   LogOut,
   Sun,
   Moon,
+  Eye,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -241,23 +243,69 @@ export const Header: React.FC<HeaderProps> = () => {
                 )}
 
                 {isConstrutoraView && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConstrutoraActiveView(
-                        construtoraActiveView === 'partners' ? 'schedule' : 'partners'
-                      );
-                      setIsMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                      construtoraActiveView === 'partners'
-                        ? 'bg-cyan-500/20 text-cyan-300'
-                        : 'text-slate-200 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>Parceiros</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const activeConstrutoraId =
+                          currentUser?.role === 'construtora'
+                            ? currentUser.partnerId || currentUser.id
+                            : currentPartner?.id;
+                        const construtoraList = partners.filter(
+                          (p) => p.segment?.toLowerCase() === 'construtora'
+                        );
+                        const targetConstrutora =
+                          partners.find((p) => p.id === activeConstrutoraId) ||
+                          (currentPartner?.segment?.toLowerCase() === 'construtora'
+                            ? currentPartner
+                            : construtoraList[0]);
+                        openPartnerModal(targetConstrutora, 'construtora');
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <Building className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Dados Cadastrais</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConstrutoraActiveView(
+                          construtoraActiveView === 'partners' ? 'schedule' : 'partners'
+                        );
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                        construtoraActiveView === 'partners'
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>Parceiros</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConstrutoraActiveView(
+                          construtoraActiveView === 'empreendimentos'
+                            ? 'schedule'
+                            : 'empreendimentos'
+                        );
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                        construtoraActiveView === 'empreendimentos'
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Empreendimentos</span>
+                    </button>
+                  </>
                 )}
 
                 {isMasterView && (
@@ -368,8 +416,34 @@ export const Header: React.FC<HeaderProps> = () => {
             )}
           </div>
 
-          {/* Right Side: Theme Switcher for Login Screen (when not logged in) */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Right Side: Master Perspective Indicator + Back Arrow, or Theme Switcher for Login Screen */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {currentUser?.role === 'admin' &&
+              (adminPerspective === 'agency_view' ||
+                adminPerspective === 'partner_view' ||
+                adminPerspective === 'construtora_view') && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700/80 text-slate-200 text-xs sm:text-sm font-semibold shadow-sm">
+                    <Eye className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>
+                      {adminPerspective === 'agency_view'
+                        ? 'Agência'
+                        : adminPerspective === 'partner_view'
+                          ? 'Parceiro'
+                          : 'Construtora'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAdminPerspective('admin_master')}
+                    title="Voltar ao Perfil Master"
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-300 transition-all cursor-pointer shadow-sm"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
             {!currentUser && (
               <button
                 type="button"

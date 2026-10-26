@@ -82,20 +82,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* VIEW PERSPECTIVE 1: AGENCY VIEW PREVIEW */}
       {viewPerspective === 'agency_view' && (
         <div className="space-y-4">
-          <div className="p-3 rounded-2xl bg-blue-950/40 border border-blue-500/30 flex items-center justify-between text-xs text-blue-200">
-            <span className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-blue-400" />
-              Você está visualizando a tela operacional da <strong>Agência Central</strong> como Administrador.
-            </span>
-            <button
-              type="button"
-              onClick={() => setViewPerspective('admin_master')}
-              className="text-cyan-400 hover:underline font-semibold cursor-pointer"
-            >
-              Voltar ao Painel Master &rarr;
-            </button>
-          </div>
-
           <AgencyDashboard
             onOpenBatchModal={onOpenBatchModal}
             onOpenSingleSlotModal={onOpenSingleSlotModal}
@@ -107,20 +93,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* VIEW PERSPECTIVE 2: PARTNER VIEW PREVIEW */}
       {viewPerspective === 'partner_view' && (
         <div className="space-y-4">
-          <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-200">
-            <span className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-emerald-400" />
-              Você está visualizando a tela do <strong>Parceiro Negocial</strong> como Administrador.
-            </span>
-            <button
-              type="button"
-              onClick={() => setViewPerspective('admin_master')}
-              className="text-emerald-400 hover:underline font-semibold cursor-pointer"
-            >
-              Voltar ao Painel Master &rarr;
-            </button>
-          </div>
-
           <PartnerView
             onBookSlot={onBookSlot}
           />
@@ -130,20 +102,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* VIEW PERSPECTIVE 2.5: CONSTRUTORA VIEW PREVIEW */}
       {viewPerspective === 'construtora_view' && (
         <div className="space-y-4">
-          <div className="p-3 rounded-2xl bg-amber-950/40 border border-amber-500/30 flex items-center justify-between text-xs text-amber-200">
-            <span className="flex items-center gap-2">
-              <Building className="w-4 h-4 text-amber-400" />
-              Você está visualizando a tela da <strong>Construtora</strong> (apenas visualização) como Administrador.
-            </span>
-            <button
-              type="button"
-              onClick={() => setViewPerspective('admin_master')}
-              className="text-amber-400 hover:underline font-semibold cursor-pointer"
-            >
-              Voltar ao Painel Master &rarr;
-            </button>
-          </div>
-
           <PartnerView isConstrutoraView />
         </div>
       )}
