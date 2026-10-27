@@ -388,7 +388,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <span className={`w-3 h-3 rounded-full shrink-0 ${construtora.badgeColor || 'bg-amber-500'}`} />
+                            <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+                              {construtora.logoUrl?.trim() ? (
+                                <img
+                                  src={construtora.logoUrl.trim()}
+                                  alt={construtora.name}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <Building className="w-4 h-4 text-amber-400" />
+                              )}
+                            </div>
                             <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
                               {construtora.name}
                             </h4>

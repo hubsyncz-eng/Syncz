@@ -90,6 +90,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const {
     currentUser,
     currentPartner,
+    partners,
     adminPerspective,
     deleteSlot,
     updateBookingOutcome,
@@ -98,7 +99,24 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   const [isOutcomeMenuOpen, setIsOutcomeMenuOpen] = useState(false);
   const [isSegmentoMenuOpen, setIsSegmentoMenuOpen] = useState(false);
+  const [logoLoadError, setLogoLoadError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const bookingConstrutora =
+    booking?.propertyType === 'Empreendimento'
+      ? partners.find(
+          (p) =>
+            p.segment?.toLowerCase() === 'construtora' &&
+            ((booking.construtoraId && p.id === booking.construtoraId) ||
+              (booking.construtoraName &&
+                p.name?.toLowerCase() === booking.construtoraName.toLowerCase()))
+        )
+      : undefined;
+  const construtoraLogoUrl = bookingConstrutora?.logoUrl?.trim() || '';
+
+  useEffect(() => {
+    setLogoLoadError(false);
+  }, [construtoraLogoUrl]);
 
   useEffect(() => {
     if (!isOutcomeMenuOpen && !isSegmentoMenuOpen) return;
@@ -311,12 +329,20 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         {/* Top-right icons: Property Type, Note (if present), and Outcome Status */}
         {isBooked && booking && (
           <div className="flex items-center justify-end gap-1.5 shrink-0 relative" ref={menuRef}>
-            {/* Ícone de Imóvel Residencial / Individual ou Empreendimento */}
+            {/* Ícone de Imóvel Residencial / Individual ou Empreendimento (ou Logo da Construtora se houver) */}
             <span
               className={
-                currentOutcomeConfig
-                  ? `p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
-                  : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                booking.propertyType === 'Empreendimento' &&
+                construtoraLogoUrl &&
+                !logoLoadError
+                  ? `w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 overflow-hidden shadow-sm ${
+                      currentOutcomeConfig
+                        ? currentOutcomeConfig.iconBtnClass
+                        : 'bg-slate-800/80 border-slate-700'
+                    }`
+                  : currentOutcomeConfig
+                    ? `p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
+                    : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
               }
               title={
                 booking.propertyType === 'Empreendimento'
@@ -331,7 +357,17 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               }
             >
               {booking.propertyType === 'Empreendimento' ? (
-                <Building className="w-4 h-4 shrink-0" />
+                construtoraLogoUrl && !logoLoadError ? (
+                  <img
+                    src={construtoraLogoUrl}
+                    alt={booking.construtoraName || 'Construtora'}
+                    referrerPolicy="no-referrer"
+                    onError={() => setLogoLoadError(true)}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Building className="w-4 h-4 shrink-0" />
+                )
               ) : (
                 <Home className="w-4 h-4 shrink-0" />
               )}
@@ -501,7 +537,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 md:gap-4 text-sm">
           {/* Mobile-only Client Name */}
           <div
-            className="md:hidden syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
+            className="order-1 md:hidden syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
             title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
           >
             <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
@@ -510,9 +546,15 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             </span>
           </div>
 
-          {/* 1ª Coluna: Parceiro */}
+          {/* CPF (2º no mobile abaixo do nome; 2ª Coluna no desktop abaixo do nome) */}
+          <div className="order-2 md:order-2 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
+            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
+          </div>
+
+          {/* Parceiro (3º no mobile depois do CPF; 1ª Coluna no desktop) */}
           <div
-            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+            className="order-3 md:order-1 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
             title={formatTitleCase(booking.partnerName)}
           >
             <Building2 className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
@@ -521,15 +563,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             </span>
           </div>
 
-          {/* 2ª Coluna: CPF */}
-          <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
-            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
-          </div>
-
-          {/* 3ª Coluna: Fidelização */}
+          {/* Fidelização (4º no mobile; 3ª Coluna no desktop) */}
           <div
-            className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+            className="order-4 md:order-3 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
             title={`Fidelização: R$ ${booking.fidelizacaoValor || '0,00'}${
               booking.fidelizacaoResponsavel || (booking.isConstrutora ? 'Construtora' : '')
                 ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`

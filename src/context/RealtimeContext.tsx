@@ -1117,12 +1117,17 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         cnpj: data.cnpj || '',
         badgeColor: colors[Math.floor(Math.random() * colors.length)],
         password: data.password || 'parceiro123',
+        logoUrl: data.logoUrl ? data.logoUrl.trim() : '',
         allowedAgencyIds: Array.isArray(data.allowedAgencyIds) ? data.allowedAgencyIds : [],
         allowedConstrutoraIds: Array.isArray(data.allowedConstrutoraIds)
           ? data.allowedConstrutoraIds
           : [],
         createdAt: new Date().toISOString(),
       };
+    }
+
+    if (data.logoUrl !== undefined && !createdPartner.logoUrl) {
+      createdPartner.logoUrl = data.logoUrl.trim();
     }
 
     if (Array.isArray(data.allowedAgencyIds) && !Array.isArray(createdPartner.allowedAgencyIds)) {
@@ -1165,6 +1170,10 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (apiRes.isApiAvailable && apiRes.ok && apiRes.data) {
       updatedPartner = {
         ...apiRes.data,
+        logoUrl:
+          data.logoUrl !== undefined
+            ? data.logoUrl.trim()
+            : apiRes.data.logoUrl ?? existing?.logoUrl ?? '',
         allowedAgencyIds: Array.isArray(data.allowedAgencyIds)
           ? data.allowedAgencyIds
           : Array.isArray(apiRes.data.allowedAgencyIds)
@@ -1198,6 +1207,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         phone: data.phone !== undefined ? data.phone.trim() : existing.phone,
         cnpj: nextCnpj,
         password: data.password || existing.password || 'parceiro123',
+        logoUrl: data.logoUrl !== undefined ? data.logoUrl.trim() : existing.logoUrl || '',
         allowedAgencyIds: Array.isArray(data.allowedAgencyIds)
           ? data.allowedAgencyIds
           : existing.allowedAgencyIds || [],

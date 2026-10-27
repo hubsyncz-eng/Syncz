@@ -511,7 +511,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                   onClick={() => setEditingPartner(construtora)}
                   className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <input
                       type="checkbox"
                       checked={isAllowed}
@@ -524,6 +524,21 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                       }
                       className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
                     />
+                    <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+                      {construtora.logoUrl?.trim() ? (
+                        <img
+                          src={construtora.logoUrl.trim()}
+                          alt={construtora.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <Building2 className="w-4 h-4 text-amber-400" />
+                      )}
+                    </div>
                     <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
                       {construtora.name}
                     </h4>

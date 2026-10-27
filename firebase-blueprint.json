@@ -36,6 +36,7 @@
         "phone": { "type": "string", "maxLength": 50 },
         "cnpj": { "type": "string", "maxLength": 30 },
         "password": { "type": "string", "maxLength": 100 },
+        "logoUrl": { "type": "string", "maxLength": 500 },
         "badgeColor": { "type": "string", "maxLength": 50 },
         "allowedAgencyIds": { "type": "array" },
         "allowedConstrutoraIds": { "type": "array" },

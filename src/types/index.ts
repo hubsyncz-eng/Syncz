@@ -133,6 +133,7 @@ export interface PartnerProfile {
   badgeColor: string;
   username?: string;
   password?: string;
+  logoUrl?: string;
   allowedAgencyIds?: string[];
   allowedConstrutoraIds?: string[];
   empreendimentos?: ConstrutoraEmpreendimento[];

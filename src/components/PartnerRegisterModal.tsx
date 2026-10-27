@@ -47,6 +47,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
   const [password, setPassword] = useState(
     partnerToEdit?.password || (resolvedInitialSegment === 'Construtora' ? 'construtora123' : 'parceiro123')
   );
+  const [logoUrl, setLogoUrl] = useState(partnerToEdit?.logoUrl || '');
 
   const isConstrutora = profileSegment === 'Construtora';
 
@@ -77,6 +78,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
           cnpj: cnpj.trim(),
           segment: profileSegment,
           password: password || defaultPass,
+          logoUrl: isConstrutora ? logoUrl.trim() : partnerToEdit.logoUrl || '',
           allowedAgencyIds: partnerToEdit.allowedAgencyIds,
         });
       } else {
@@ -93,6 +95,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
           cnpj: cnpj.trim(),
           segment: profileSegment,
           password: password || defaultPass,
+          logoUrl: isConstrutora ? logoUrl.trim() : '',
           allowedAgencyIds: isAgencyCreator && activeAgencyId ? [activeAgencyId] : [],
         });
 
@@ -253,6 +256,39 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
               />
             </div>
           </div>
+
+          {isConstrutora && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Link da Imagem do Logo
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://exemplo.com/logo-construtora.png"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                />
+                {logoUrl.trim() && (
+                  <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
+                    <img
+                      src={logoUrl.trim()}
+                      alt="Logo"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      }}
+                      onLoad={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'block';
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">

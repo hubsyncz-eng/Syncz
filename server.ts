@@ -476,7 +476,19 @@ app.delete('/api/agencies/:id', (req, res) => {
 
 // Admin or partner registers a new Partner
 app.post('/api/partners', (req, res) => {
-  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds, allowedConstrutoraIds } = req.body;
+  const {
+    name,
+    segment,
+    representative,
+    email,
+    phone,
+    cnpj,
+    password,
+    logoUrl,
+    allowedAgencyIds,
+    allowedConstrutoraIds,
+    empreendimentos,
+  } = req.body;
 
   if (!name || !representative || !email) {
     return res.status(400).json({ error: 'Preencha os campos obrigatórios do parceiro.' });
@@ -493,8 +505,10 @@ app.post('/api/partners', (req, res) => {
     cnpj: cnpj || '',
     badgeColor: colors[Math.floor(Math.random() * colors.length)],
     password: password || 'parceiro123',
+    logoUrl: logoUrl ? String(logoUrl).trim() : '',
     allowedAgencyIds: Array.isArray(allowedAgencyIds) ? allowedAgencyIds : [],
     allowedConstrutoraIds: Array.isArray(allowedConstrutoraIds) ? allowedConstrutoraIds : [],
+    empreendimentos: Array.isArray(empreendimentos) ? empreendimentos : [],
     createdAt: new Date().toISOString(),
   };
 
@@ -512,32 +526,52 @@ app.post('/api/partners', (req, res) => {
 // Admin or partner updates an existing Partner
 app.put('/api/partners/:id', (req, res) => {
   const { id } = req.params;
-  const { name, segment, representative, email, phone, cnpj, password, allowedAgencyIds, allowedConstrutoraIds } = req.body;
+  const {
+    name,
+    segment,
+    representative,
+    email,
+    phone,
+    cnpj,
+    password,
+    logoUrl,
+    allowedAgencyIds,
+    allowedConstrutoraIds,
+    empreendimentos,
+  } = req.body;
 
   const idx = partners.findIndex((p) => p.id === id);
   if (idx === -1) {
     return res.status(404).json({ error: 'Parceiro não encontrado.' });
   }
 
-  if (!name || !email || !cnpj) {
+  const nextName = name !== undefined ? String(name).trim() : partners[idx].name;
+  const nextEmail = email !== undefined ? String(email).trim() : partners[idx].email;
+  const nextCnpj = cnpj !== undefined ? String(cnpj).trim() : partners[idx].cnpj;
+
+  if (!nextName || !nextEmail || !nextCnpj) {
     return res.status(400).json({ error: 'Preencha todos os campos obrigatórios do parceiro.' });
   }
 
   const updatedPartner: PartnerProfile = {
     ...partners[idx],
-    name: name.trim(),
+    name: nextName,
     segment: segment || partners[idx].segment || 'Parceiro Negocial',
-    representative: representative || name.trim(),
-    email: email.trim(),
-    phone: phone !== undefined ? phone.trim() : partners[idx].phone,
-    cnpj: cnpj.trim(),
+    representative: representative || partners[idx].representative || nextName,
+    email: nextEmail,
+    phone: phone !== undefined ? String(phone).trim() : partners[idx].phone,
+    cnpj: nextCnpj,
     password: password || partners[idx].password || 'parceiro123',
+    logoUrl: logoUrl !== undefined ? String(logoUrl).trim() : partners[idx].logoUrl || '',
     allowedAgencyIds: Array.isArray(allowedAgencyIds)
       ? allowedAgencyIds
       : partners[idx].allowedAgencyIds || [],
     allowedConstrutoraIds: Array.isArray(allowedConstrutoraIds)
       ? allowedConstrutoraIds
       : partners[idx].allowedConstrutoraIds || [],
+    empreendimentos: Array.isArray(empreendimentos)
+      ? empreendimentos
+      : partners[idx].empreendimentos || [],
   };
 
   partners[idx] = updatedPartner;
