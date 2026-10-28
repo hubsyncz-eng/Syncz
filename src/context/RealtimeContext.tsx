@@ -60,8 +60,10 @@ interface RealtimeContextValue {
   ) => void;
   agencyActiveView: 'schedule' | 'partners' | 'construtoras' | 'users';
   setAgencyActiveView: (view: 'schedule' | 'partners' | 'construtoras' | 'users') => void;
-  construtoraActiveView: 'schedule' | 'partners' | 'empreendimentos';
-  setConstrutoraActiveView: (view: 'schedule' | 'partners' | 'empreendimentos') => void;
+  construtoraActiveView: 'schedule' | 'dashboard' | 'partners' | 'empreendimentos';
+  setConstrutoraActiveView: (
+    view: 'schedule' | 'dashboard' | 'partners' | 'empreendimentos'
+  ) => void;
   loginWithCredentials: (
     username: string,
     password: string,
@@ -378,9 +380,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'schedule' | 'partners' | 'construtoras' | 'users'
   >('schedule');
 
-  // Active sub-view inside Construtora perspective ('schedule' | 'partners' | 'empreendimentos')
+  // Active sub-view inside Construtora perspective ('schedule' | 'dashboard' | 'partners' | 'empreendimentos')
   const [construtoraActiveView, setConstrutoraActiveView] = useState<
-    'schedule' | 'partners' | 'empreendimentos'
+    'schedule' | 'dashboard' | 'partners' | 'empreendimentos'
   >('schedule');
 
   const [toasts, setToasts] = useState<ToastAlert[]>([]);

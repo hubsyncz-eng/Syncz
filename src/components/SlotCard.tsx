@@ -158,15 +158,27 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     !isBooked &&
     slot.date <= todayIso;
 
-  // Check if booked by currently active partner (or linked to construtora when in construtora view)
+  const activeConstrutoraProfile = isReadOnlyConstrutora
+    ? partners.find((p) => p.id === activePartnerId) || currentPartner
+    : undefined;
+  const activeConstrutoraNameLower = (
+    activeConstrutoraProfile?.name ||
+    (currentUser?.role === 'construtora' ? currentUser.name : '') ||
+    ''
+  )
+    .trim()
+    .toLowerCase();
+
+  // Check if booked by currently active partner (or explicitly linked to construtora when in construtora view)
   const isBookedByCurrentPartner =
     isBooked &&
     booking &&
-    (booking.partnerId === activePartnerId ||
-      (isReadOnlyConstrutora &&
+    (isReadOnlyConstrutora
+      ? booking.propertyType === 'Empreendimento' &&
         (booking.construtoraId === activePartnerId ||
-          (!booking.construtoraId &&
-            (booking.fidelizacaoResponsavel === 'Construtora' || booking.isConstrutora)))));
+          (Boolean(booking.construtoraName && activeConstrutoraNameLower) &&
+            booking.construtoraName!.trim().toLowerCase() === activeConstrutoraNameLower))
+      : booking.partnerId === activePartnerId);
 
   // In partner / construtora view, hide other bookings, locked slots, and unbookable free slots completely
   if (activeRole === 'partner' || activeRole === 'construtora') {
@@ -226,109 +238,158 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
       }`}
     >
-      {/* Top Header: Time, Weekday & Date + Client Name (Desktop Col 2) + Action Icons */}
-      <div
-        className={`flex items-center justify-between gap-2 ${
-          isBooked && booking
-            ? 'md:grid md:grid-cols-3 md:gap-4 pb-1.5 mb-1.5 border-b border-slate-800/80'
-            : ''
-        }`}
-      >
-        <div className="flex items-center gap-1.5 text-base font-semibold text-white min-w-0 flex-wrap">
-          <div className="flex items-center gap-2 shrink-0">
-            <Clock
-              className={`syncz-booking-meta-icon w-[18px] h-[18px] shrink-0 ${
-                !isBooked
-                  ? 'text-slate-400'
-                  : booking?.outcome === 'Reprovado'
-                    ? 'text-rose-400'
-                    : booking?.outcome === 'Aprovado'
-                      ? 'text-[#00a8ff]'
-                      : booking?.outcome === 'Remarcar'
-                        ? 'text-amber-400'
-                        : booking?.outcome === 'Não compareceu'
-                          ? 'text-orange-400'
-                          : 'text-slate-400'
-              }`}
-            />
-            <span className="syncz-booking-meta-text syncz-booking-time-text text-base font-extrabold text-white shrink-0">{slot.startTime}</span>
-          </div>
-          <span
-            className={`syncz-booking-date-text text-base font-semibold truncate ${
-              !isBooked
-                ? 'text-slate-400'
-                : booking?.outcome === 'Reprovado'
-                  ? 'text-rose-400'
-                  : booking?.outcome === 'Aprovado'
-                    ? 'text-[#00a8ff]'
-                    : booking?.outcome === 'Remarcar'
-                      ? 'text-amber-400'
-                      : booking?.outcome === 'Não compareceu'
-                        ? 'text-orange-400'
-                        : 'text-slate-400'
-            }`}
-          >
-            - {formatPortugueseDate(slot.date)}
-          </span>
-        </div>
-
-        {/* Desktop Column 2: Client Name in Bold aligned with Column 2 below */}
-        {isBooked && booking && (
-          <div
-            className="hidden md:flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
-            title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
-          >
-            <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
-              {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+      {!isBooked ? (
+        /* Available Slot: Single row with Time & Date on the left and Action Icons on the right */
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-base font-semibold text-white min-w-0 flex-wrap">
+            <div className="flex items-center gap-2 shrink-0">
+              <Clock className="syncz-booking-meta-icon w-[18px] h-[18px] shrink-0 text-slate-400" />
+              <span className="syncz-booking-meta-text syncz-booking-time-text text-base font-extrabold text-white shrink-0">
+                {slot.startTime}
+              </span>
+            </div>
+            <span className="syncz-booking-date-text text-base font-semibold truncate text-slate-400">
+              - {formatPortugueseDate(slot.date)}
             </span>
           </div>
-        )}
 
-        {/* Action icons in top right for available slots (hidden in read-only Construtora view) */}
-        {!isBooked && !isReadOnlyConstrutora && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              disabled={isPartnerInclusionBlocked}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isPartnerInclusionBlocked) return;
-                if (onBookSlot) onBookSlot(slot);
-              }}
-              className={
-                isPartnerInclusionBlocked
-                  ? 'syncz-slot-disabled-btn p-[7px] rounded-xl bg-slate-800/70 text-slate-500 border border-slate-700/70 flex items-center justify-center shrink-0 cursor-not-allowed opacity-60'
-                  : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
-              }
-              title={
-                isPartnerInclusionBlocked
-                  ? 'Inclusão não permitida para o dia atual ou dias passados (somente a partir do próximo dia)'
-                  : 'Clique para fazer o cadastro deste horário'
-              }
-            >
-              <CalendarPlus className="w-[18px] h-[18px]" />
-            </button>
-
-            {activeRole === 'agency' && (
+          {!isReadOnlyConstrutora && (
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
+                disabled={isPartnerInclusionBlocked}
                 onClick={(e) => {
                   e.stopPropagation();
-                  deleteSlot(slot.id);
+                  if (isPartnerInclusionBlocked) return;
+                  if (onBookSlot) onBookSlot(slot);
                 }}
-                title="Excluir este horário"
-                className="syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                className={
+                  isPartnerInclusionBlocked
+                    ? 'syncz-slot-disabled-btn p-[7px] rounded-xl bg-slate-800/70 text-slate-500 border border-slate-700/70 flex items-center justify-center shrink-0 cursor-not-allowed opacity-60'
+                    : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
+                }
+                title={
+                  isPartnerInclusionBlocked
+                    ? 'Inclusão não permitida para o dia atual ou dias passados (somente a partir do próximo dia)'
+                    : 'Clique para fazer o cadastro deste horário'
+                }
               >
-                <Trash2 className="w-[18px] h-[18px]" />
+                <CalendarPlus className="w-[18px] h-[18px]" />
               </button>
-            )}
-          </div>
-        )}
 
-        {/* Top-right icons: Property Type, Note (if present), and Outcome Status */}
-        {isBooked && booking && (
-          <div className="flex items-center justify-end gap-1.5 shrink-0 relative" ref={menuRef}>
+              {activeRole === 'agency' && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSlot(slot.id);
+                  }}
+                  title="Excluir este horário"
+                  className="syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                >
+                  <Trash2 className="w-[18px] h-[18px]" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : booking ? (
+        /* Booked Slot:
+           - Desktop: Left side has only Time & Date centered (matching available slots); right side has 2 columns (Col 1: Client Name over CPF; Col 2: Partner over Value) + action icons.
+           - Mobile: Top row has Time & Date + action icons; bottom section stacks Client Name, CPF, Partner, Value. */
+        <div className="grid grid-cols-[1fr_auto] md:grid-cols-[minmax(215px,0.95fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_auto] items-center gap-x-2 gap-y-2 md:gap-x-4 md:gap-y-0">
+          {/* Lado esquerdo: Apenas Horário e Data, centralizado */}
+          <div className="order-1 md:order-1 flex items-center gap-1.5 text-base font-semibold text-white min-w-0 flex-wrap">
+            <div className="flex items-center gap-2 shrink-0">
+              <Clock
+                className={`syncz-booking-meta-icon w-[18px] h-[18px] shrink-0 ${
+                  booking.outcome === 'Reprovado'
+                    ? 'text-rose-400'
+                    : booking.outcome === 'Aprovado'
+                      ? 'text-[#00a8ff]'
+                      : booking.outcome === 'Remarcar'
+                        ? 'text-amber-400'
+                        : booking.outcome === 'Não compareceu'
+                          ? 'text-orange-400'
+                          : 'text-slate-400'
+                }`}
+              />
+              <span className="syncz-booking-meta-text syncz-booking-time-text text-base font-extrabold text-white shrink-0">
+                {slot.startTime}
+              </span>
+            </div>
+            <span
+              className={`syncz-booking-date-text text-base font-semibold truncate ${
+                booking.outcome === 'Reprovado'
+                  ? 'text-rose-400'
+                  : booking.outcome === 'Aprovado'
+                    ? 'text-[#00a8ff]'
+                    : booking.outcome === 'Remarcar'
+                      ? 'text-amber-400'
+                      : booking.outcome === 'Não compareceu'
+                        ? 'text-orange-400'
+                        : 'text-slate-400'
+              }`}
+            >
+              - {formatPortugueseDate(slot.date)}
+            </span>
+          </div>
+
+          {/* Duas colunas à direita no desktop (1ª: Nome e embaixo CPF | 2ª: Parceiro e embaixo Valor) */}
+          <div className="order-3 col-span-2 md:order-2 md:col-span-2 border-t border-slate-800/80 pt-2 md:border-t-0 md:pt-0 grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-4 text-sm min-w-0">
+            {/* 1ª Coluna: Nome do Cliente e embaixo CPF */}
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <div
+                className="syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
+                title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+              >
+                <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
+                  {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
+                </span>
+              </div>
+
+              <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
+                <CreditCard className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                  {booking.clientCpf || 'Não informado'}
+                </span>
+              </div>
+            </div>
+
+            {/* 2ª Coluna: Parceiro e embaixo Valor */}
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <div
+                className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+                title={formatTitleCase(booking.partnerName)}
+              >
+                <Building2 className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                  {formatTitleCase(booking.partnerName)}
+                </span>
+              </div>
+
+              <div
+                className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+                title={`Fidelização: R$ ${booking.fidelizacaoValor || '0,00'}${
+                  booking.fidelizacaoResponsavel || (booking.isConstrutora ? 'Construtora' : '')
+                    ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
+                    : ''
+                }`}
+              >
+                <Banknote className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                  R$ {booking.fidelizacaoValor || '0,00'}
+                  {booking.fidelizacaoResponsavel || booking.isConstrutora
+                    ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
+                    : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ícones no canto direito: Tipo de Imóvel / Logo da Construtora, Nota, Segmento e Status */}
+          <div className="order-2 md:order-3 flex items-center justify-end gap-1.5 shrink-0 relative" ref={menuRef}>
             {/* Ícone de Imóvel Residencial / Individual ou Empreendimento (ou Logo da Construtora se houver) */}
             <span
               className={
@@ -529,59 +590,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               </>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Card Content for Booked Slot: Linha de baixo com Parceiro, CPF e Fidelização */}
-      {isBooked && booking && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 md:gap-4 text-sm">
-          {/* Mobile-only Client Name */}
-          <div
-            className="order-1 md:hidden syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
-            title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
-          >
-            <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
-              {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
-            </span>
-          </div>
-
-          {/* CPF (2º no mobile abaixo do nome; 2ª Coluna no desktop abaixo do nome) */}
-          <div className="order-2 md:order-2 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
-            <CreditCard className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
-          </div>
-
-          {/* Parceiro (3º no mobile depois do CPF; 1ª Coluna no desktop) */}
-          <div
-            className="order-3 md:order-1 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
-            title={formatTitleCase(booking.partnerName)}
-          >
-            <Building2 className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
-              {formatTitleCase(booking.partnerName)}
-            </span>
-          </div>
-
-          {/* Fidelização (4º no mobile; 3ª Coluna no desktop) */}
-          <div
-            className="order-4 md:order-3 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
-            title={`Fidelização: R$ ${booking.fidelizacaoValor || '0,00'}${
-              booking.fidelizacaoResponsavel || (booking.isConstrutora ? 'Construtora' : '')
-                ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
-                : ''
-            }`}
-          >
-            <Banknote className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
-            <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
-              R$ {booking.fidelizacaoValor || '0,00'}
-              {booking.fidelizacaoResponsavel || booking.isConstrutora
-                ? ` • ${booking.fidelizacaoResponsavel || 'Construtora'}`
-                : ''}
-            </span>
-          </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

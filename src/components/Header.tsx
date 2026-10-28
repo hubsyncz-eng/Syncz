@@ -11,6 +11,7 @@ import {
   Moon,
   Eye,
   ArrowLeft,
+  BarChart3,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -244,6 +245,24 @@ export const Header: React.FC<HeaderProps> = () => {
 
                 {isConstrutoraView && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConstrutoraActiveView(
+                          construtoraActiveView === 'dashboard' ? 'schedule' : 'dashboard'
+                        );
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                        construtoraActiveView === 'dashboard'
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>Dashboard</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {

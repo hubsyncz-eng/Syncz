@@ -299,7 +299,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           fidelizacaoValor: fidelizacaoValor.trim(),
           fidelizacaoResponsavel,
           isConstrutora:
-            fidelizacaoResponsavel === 'Construtora' || Boolean(finalConstrutoraId),
+            propertyType === 'Empreendimento' && Boolean(finalConstrutoraId),
           partnerNotes: partnerNotes.trim(),
           ...(isAgencyActor && selectedPartnerFromList
             ? {
@@ -335,7 +335,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         fidelizacaoValor: fidelizacaoValor.trim(),
         fidelizacaoResponsavel,
         isConstrutora:
-          fidelizacaoResponsavel === 'Construtora' || Boolean(finalConstrutoraId),
+          propertyType === 'Empreendimento' && Boolean(finalConstrutoraId),
         agendaTopic: `${propertyType}: ${clientName.trim()}`,
         partnerNotes: partnerNotes.trim(),
       });
