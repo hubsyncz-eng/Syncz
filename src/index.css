@@ -648,19 +648,27 @@ html.light-mode .syncz-booking-meta-text {
 
 .syncz-booking-time-text,
 html.light-mode .syncz-booking-time-text {
+  font-size: 1rem !important;
+  line-height: 1.375rem !important;
   font-weight: 800 !important;
+}
+
+.syncz-booking-date-text,
+html.light-mode .syncz-booking-date-text {
+  font-size: 1rem !important;
+  line-height: 1.375rem !important;
 }
 
 .syncz-booking-meta-icon {
   color: #94a3b8 !important;
-  width: 1rem !important;
-  height: 1rem !important;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
 }
 
 html.light-mode .syncz-booking-meta-icon {
   color: #64748b !important;
-  width: 1rem !important;
-  height: 1rem !important;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
 }
 
 /* 12. Unmarked Booked Cards in Light Mode (White Surface & Gray Borders matching Available Slots) */

@@ -234,10 +234,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             : ''
         }`}
       >
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-white min-w-0 flex-wrap">
+        <div className="flex items-center gap-1.5 text-base font-semibold text-white min-w-0 flex-wrap">
           <div className="flex items-center gap-2 shrink-0">
             <Clock
-              className={`syncz-booking-meta-icon w-4 h-4 shrink-0 ${
+              className={`syncz-booking-meta-icon w-[18px] h-[18px] shrink-0 ${
                 !isBooked
                   ? 'text-slate-400'
                   : booking?.outcome === 'Reprovado'
@@ -251,10 +251,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                           : 'text-slate-400'
               }`}
             />
-            <span className="syncz-booking-meta-text syncz-booking-time-text text-sm font-extrabold text-white shrink-0">{slot.startTime}</span>
+            <span className="syncz-booking-meta-text syncz-booking-time-text text-base font-extrabold text-white shrink-0">{slot.startTime}</span>
           </div>
           <span
-            className={`syncz-booking-date-text text-sm font-semibold truncate ${
+            className={`syncz-booking-date-text text-base font-semibold truncate ${
               !isBooked
                 ? 'text-slate-400'
                 : booking?.outcome === 'Reprovado'
@@ -278,7 +278,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             className="hidden md:flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
             title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
           >
-            <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
             <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
               {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
             </span>
@@ -298,8 +298,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               }}
               className={
                 isPartnerInclusionBlocked
-                  ? 'syncz-slot-disabled-btn p-1.5 rounded-xl bg-slate-800/70 text-slate-500 border border-slate-700/70 flex items-center justify-center shrink-0 cursor-not-allowed opacity-60'
-                  : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
+                  ? 'syncz-slot-disabled-btn p-[7px] rounded-xl bg-slate-800/70 text-slate-500 border border-slate-700/70 flex items-center justify-center shrink-0 cursor-not-allowed opacity-60'
+                  : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
               }
               title={
                 isPartnerInclusionBlocked
@@ -307,7 +307,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   : 'Clique para fazer o cadastro deste horário'
               }
             >
-              <CalendarPlus className="w-4 h-4" />
+              <CalendarPlus className="w-[18px] h-[18px]" />
             </button>
 
             {activeRole === 'agency' && (
@@ -318,9 +318,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   deleteSlot(slot.id);
                 }}
                 title="Excluir este horário"
-                className="syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                className="syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-[18px] h-[18px]" />
               </button>
             )}
           </div>
@@ -335,14 +335,14 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 booking.propertyType === 'Empreendimento' &&
                 construtoraLogoUrl &&
                 !logoLoadError
-                  ? `w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 overflow-hidden shadow-sm ${
+                  ? `w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 overflow-hidden shadow-sm ${
                       currentOutcomeConfig
                         ? currentOutcomeConfig.iconBtnClass
                         : 'bg-slate-800/80 border-slate-700'
                     }`
                   : currentOutcomeConfig
-                    ? `p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
-                    : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                    ? `p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
+                    : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
               }
               title={
                 booking.propertyType === 'Empreendimento'
@@ -366,10 +366,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Building className="w-4 h-4 shrink-0" />
+                  <Building className="w-[18px] h-[18px] shrink-0" />
                 )
               ) : (
-                <Home className="w-4 h-4 shrink-0" />
+                <Home className="w-[18px] h-[18px] shrink-0" />
               )}
             </span>
 
@@ -378,21 +378,21 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               <span
                 className={
                   currentOutcomeConfig
-                    ? `p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
-                    : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                    ? `p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`
+                    : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
                 }
                 title={`Nota: ${booking.partnerNotes!.trim()}`}
               >
-                <FileText className="w-4 h-4 shrink-0" />
+                <FileText className="w-[18px] h-[18px] shrink-0" />
               </span>
             )}
 
             {activeRole !== 'agency' && currentOutcomeConfig && OutcomeBadgeIcon && (
               <span
-                className={`p-1.5 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`}
+                className={`p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${currentOutcomeConfig.iconBtnClass}`}
                 title={`Status: ${currentOutcomeConfig.label}`}
               >
-                <OutcomeBadgeIcon className="w-4 h-4 shrink-0" />
+                <OutcomeBadgeIcon className="w-[18px] h-[18px] shrink-0" />
               </span>
             )}
 
@@ -413,20 +413,20 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   }
                   className={
                     currentOutcomeConfig
-                      ? `p-1.5 rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
-                      : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
+                      ? `p-[7px] rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
+                      : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
                   }
                 >
                   {booking.segmento === 'Varejo' ? (
-                    <span className="w-4 h-4 flex items-center justify-center text-xs font-extrabold leading-none shrink-0">
+                    <span className="w-[18px] h-[18px] flex items-center justify-center text-[13px] font-extrabold leading-none shrink-0">
                       V
                     </span>
                   ) : booking.segmento === 'Carteira' ? (
-                    <span className="w-4 h-4 flex items-center justify-center text-xs font-extrabold leading-none shrink-0">
+                    <span className="w-[18px] h-[18px] flex items-center justify-center text-[13px] font-extrabold leading-none shrink-0">
                       C
                     </span>
                   ) : (
-                    <Layers className="w-4 h-4 shrink-0" />
+                    <Layers className="w-[18px] h-[18px] shrink-0" />
                   )}
                 </button>
 
@@ -483,11 +483,11 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                   }
                   className={
                     currentOutcomeConfig
-                      ? `p-1.5 rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
-                      : 'syncz-available-icon-btn p-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
+                      ? `p-[7px] rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
+                      : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-slate-200 transition-all flex items-center justify-center shrink-0 cursor-pointer'
                   }
                 >
-                  <Menu className="w-4 h-4 shrink-0" />
+                  <Menu className="w-[18px] h-[18px] shrink-0" />
                 </button>
 
                 {isOutcomeMenuOpen && (
@@ -540,7 +540,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             className="order-1 md:hidden syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
             title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
           >
-            <User className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
             <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
               {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
             </span>
@@ -548,7 +548,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
           {/* CPF (2º no mobile abaixo do nome; 2ª Coluna no desktop abaixo do nome) */}
           <div className="order-2 md:order-2 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
-            <CreditCard className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <CreditCard className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
             <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">{booking.clientCpf || 'Não informado'}</span>
           </div>
 
@@ -557,7 +557,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             className="order-3 md:order-1 syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
             title={formatTitleCase(booking.partnerName)}
           >
-            <Building2 className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <Building2 className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
             <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
               {formatTitleCase(booking.partnerName)}
             </span>
@@ -572,7 +572,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
                 : ''
             }`}
           >
-            <Banknote className="syncz-booking-meta-icon w-4 h-4 text-slate-400 shrink-0" />
+            <Banknote className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
             <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
               R$ {booking.fidelizacaoValor || '0,00'}
               {booking.fidelizacaoResponsavel || booking.isConstrutora
