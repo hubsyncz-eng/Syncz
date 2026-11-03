@@ -242,6 +242,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     });
   };
 
+  const hasFidelizacaoValor = Boolean(
+    fidelizacaoValor.trim() &&
+      fidelizacaoValor.replace(/\D/g, '').length > 0 &&
+      parseInt(fidelizacaoValor.replace(/\D/g, ''), 10) > 0
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const todayIso = formatDateToISO(new Date());
@@ -271,6 +277,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     if (isAgencyActor && !selectedPartnerFromList) {
       setErrorMsg('Por favor selecione um dos parceiros cadastrados.');
+      return;
+    }
+
+    if (hasFidelizacaoValor && !fidelizacaoResponsavel) {
+      setErrorMsg('Ao preencher o valor de fidelização, é obrigatório selecionar o responsável: Cliente, Parceiro ou Construtora.');
       return;
     }
 
@@ -540,9 +551,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           {/* Fidelização (Valor em R$ 0.000,00) + 3 botões embaixo: Cliente, Parceiro, Construtora */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Fidelização
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>Fidelização</span>
+                {hasFidelizacaoValor && (
+                  <span className="text-amber-400 font-semibold text-[11px]">
+                    * (Obrigatório selecionar responsável)
+                  </span>
+                )}
+              </label>
+              {fidelizacaoResponsavel && (
+                <span className="text-[11px] font-semibold text-cyan-400">
+                  Responsável: {fidelizacaoResponsavel}
+                </span>
+              )}
+            </div>
+
             <div className="relative">
               <span className="text-xs sm:text-sm font-bold text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 select-none pointer-events-none">
                 R$
@@ -552,32 +576,51 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 inputMode="numeric"
                 value={fidelizacaoValor}
                 onChange={(e) => setFidelizacaoValor(formatCurrencyBRL(e.target.value))}
-                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:outline-none focus:border-cyan-500 text-xs sm:text-sm placeholder:text-slate-600"
+                className={`w-full pl-10 pr-3 py-2.5 rounded-xl bg-slate-950 border font-mono focus:outline-none text-xs sm:text-sm placeholder:text-slate-600 transition-colors ${
+                  hasFidelizacaoValor && !fidelizacaoResponsavel
+                    ? 'border-amber-500/60 text-white focus:border-amber-400'
+                    : 'border-slate-800 text-white focus:border-cyan-500'
+                }`}
                 placeholder="0.000,00"
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mt-2.5">
-              {(['Cliente', 'Parceiro', 'Construtora'] as FidelizacaoResponsavel[]).map(
-                (opcao) => {
-                  const isSelected = fidelizacaoResponsavel === opcao;
-                  return (
-                    <button
-                      key={opcao}
-                      type="button"
-                      onClick={() =>
-                        setFidelizacaoResponsavel((prev) => (prev === opcao ? '' : opcao))
-                      }
-                      className={`py-3 px-4 rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
-                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
-                      }`}
-                    >
-                      <span>{opcao}</span>
-                    </button>
-                  );
-                }
+            <div
+              className={`mt-2.5 p-2 rounded-2xl transition-all ${
+                hasFidelizacaoValor && !fidelizacaoResponsavel
+                  ? 'bg-amber-950/20 border border-amber-500/40 ring-1 ring-amber-500/30'
+                  : ''
+              }`}
+            >
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {(['Cliente', 'Parceiro', 'Construtora'] as FidelizacaoResponsavel[]).map(
+                  (opcao) => {
+                    const isSelected = fidelizacaoResponsavel === opcao;
+                    return (
+                      <button
+                        key={opcao}
+                        type="button"
+                        onClick={() =>
+                          setFidelizacaoResponsavel((prev) => (prev === opcao ? '' : opcao))
+                        }
+                        className={`py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-semibold flex items-center justify-center gap-1 sm:gap-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
+                            : hasFidelizacaoValor && !fidelizacaoResponsavel
+                            ? 'bg-slate-900 border-amber-500/50 text-amber-200 hover:bg-slate-850 hover:text-white'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850'
+                        }`}
+                      >
+                        <span>{opcao}</span>
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+              {hasFidelizacaoValor && !fidelizacaoResponsavel && (
+                <p className="text-[11px] text-amber-400 mt-2 text-center font-medium">
+                  Selecione quem pagará a fidelização: <strong>Cliente</strong>, <strong>Parceiro</strong> ou <strong>Construtora</strong>.
+                </p>
               )}
             </div>
           </div>

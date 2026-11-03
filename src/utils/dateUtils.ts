@@ -46,6 +46,26 @@ export function formatPortugueseDate(dateStr: string): string {
   return `${dayShort} - ${dd}/${mm}/${year}`;
 }
 
+export function getSlotDateParts(dateStr: string): {
+  dayOfWeek: string;
+  dateFormatted: string;
+  dayShort: string;
+} {
+  if (!dateStr) return { dayOfWeek: '', dateFormatted: '', dayShort: '' };
+  if (dateStr.includes('-')) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const found = DAYS_OF_WEEK.find((dw) => dw.id === date.getDay());
+    const dayOfWeek = found?.name || '';
+    const dayShort = found?.short || '';
+    const dd = String(day).padStart(2, '0');
+    const mm = String(month).padStart(2, '0');
+    const dateFormatted = `${dd}/${mm}/${year}`;
+    return { dayOfWeek, dateFormatted, dayShort };
+  }
+  return { dayOfWeek: '', dateFormatted: dateStr, dayShort: '' };
+}
+
 export function formatFullPortugueseDate(dateStr: string): string {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-').map(Number);

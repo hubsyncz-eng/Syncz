@@ -91,6 +91,8 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     currentUser,
     currentPartner,
     partners,
+    agencies,
+    currentAgency,
     adminPerspective,
     deleteSlot,
     updateBookingOutcome,
@@ -100,6 +102,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const [isOutcomeMenuOpen, setIsOutcomeMenuOpen] = useState(false);
   const [isSegmentoMenuOpen, setIsSegmentoMenuOpen] = useState(false);
   const [logoLoadError, setLogoLoadError] = useState(false);
+  const [whatsappCopied, setWhatsappCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const bookingConstrutora =
@@ -209,6 +212,27 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     : undefined;
 
   const OutcomeBadgeIcon = currentOutcomeConfig?.icon;
+
+  const slotAgency =
+    agencies.find((a) => a.id === (booking?.agencyId || slot.agencyId)) || currentAgency;
+  const fullClientName = formatTitleCase(
+    booking?.clientName || booking?.partnerRepresentative || 'Cliente'
+  );
+  const clientFirstName = fullClientName.trim().split(/\s+/)[0] || 'Cliente';
+  const cleanAgencyName = (slotAgency?.name || '')
+    .trim()
+    .replace(/^ag[êe]ncia\s+/i, '');
+  const agencyAddress = (slotAgency?.address || '').trim();
+  const agencyCity = (slotAgency?.city || '').trim();
+  const agencyLocation = [agencyAddress, agencyCity].filter(Boolean).join(' ');
+  const dateParts = slot.date.split('-');
+  const dayMonth =
+    dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : slot.date;
+
+  const whatsappMessage = booking
+    ? `Olá ${clientFirstName}, sua entrevista na Agência ${cleanAgencyName} que fica na ${agencyLocation} está confirmada para dia ${dayMonth} às ${slot.startTime}.`
+    : '';
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <div
@@ -455,6 +479,50 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               >
                 <OutcomeBadgeIcon className="w-[18px] h-[18px] shrink-0" />
               </span>
+            )}
+
+            {activeRole === 'partner' && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (navigator.clipboard?.writeText) {
+                    navigator.clipboard.writeText(whatsappMessage).catch(() => {});
+                  }
+                  setWhatsappCopied(true);
+                  setTimeout(() => setWhatsappCopied(false), 2000);
+                }}
+                title={
+                  whatsappCopied
+                    ? 'Mensagem copiada! Abrindo WhatsApp...'
+                    : `Enviar confirmação no WhatsApp:\n"${whatsappMessage}"`
+                }
+                className={
+                  currentOutcomeConfig
+                    ? `p-[7px] rounded-xl border transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${currentOutcomeConfig.iconBtnClass}`
+                    : 'syncz-available-icon-btn p-[7px] rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/25 hover:text-emerald-300 transition-all flex items-center justify-center shrink-0 cursor-pointer'
+                }
+              >
+                {whatsappCopied ? (
+                  <Check className="w-[18px] h-[18px] shrink-0" />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-[18px] h-[18px] shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+                    <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" />
+                  </svg>
+                )}
+              </a>
             )}
 
             {activeRole === 'agency' && (

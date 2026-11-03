@@ -11,6 +11,7 @@ import {
   formatFullPortugueseDate,
   downloadICS,
 } from '../utils/dateUtils.ts';
+import { parseFidelizacaoValor } from '../utils/currencyUtils.ts';
 import {
   BRAZILIAN_STATES,
   CITIES_BY_STATE_FALLBACK,
@@ -47,6 +48,7 @@ import {
   Trash2,
   BarChart3,
   XCircle,
+  Banknote,
 } from 'lucide-react';
 
 interface PartnerViewProps {
@@ -66,6 +68,8 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     currentPartner,
     currentUser,
     adminPerspective,
+    partnerActiveView,
+    setPartnerActiveView,
     construtoraActiveView,
     setConstrutoraActiveView,
     togglePartnerConstrutoraAccess,
@@ -203,10 +207,19 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     const partnerMatch = (b.partnerName || '').toLowerCase().includes(rawTerm);
     const construtoraMatch = (b.construtoraName || '').toLowerCase().includes(rawTerm);
     const clientNameMatch = (b.clientName || '').toLowerCase().includes(rawTerm);
+    const repMatch = (b.partnerRepresentative || '').toLowerCase().includes(rawTerm);
+    const empMatch = (b.empreendimentoName || '').toLowerCase().includes(rawTerm);
     const clientCpfMatch =
       (b.clientCpf || '').toLowerCase().includes(rawTerm) ||
       (cleanCpfTerm.length > 0 && (b.clientCpf || '').replace(/\D/g, '').includes(cleanCpfTerm));
-    return partnerMatch || construtoraMatch || clientNameMatch || clientCpfMatch;
+    return (
+      partnerMatch ||
+      construtoraMatch ||
+      clientNameMatch ||
+      repMatch ||
+      empMatch ||
+      clientCpfMatch
+    );
   };
 
   // Calculate target date when in daily (Hoje) mode
@@ -298,28 +311,54 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
   // Effective day filter (either from Hoje/daily mode or day chip click)
   const effectiveDayFilter = isTodayMode ? targetDayDate.dateStr : selectedDayFilter;
 
+  // Filtered slots for calendar
+  // When searching: search across ALL booked slots (passados, presentes e futuros)
   const filteredSlots = useMemo(() => {
-    const dayFiltered = !effectiveDayFilter
-      ? weekVisibleSlots
-      : weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
+    const isSearching = Boolean(searchTerm.trim());
+    if (!isSearching) {
+      const dayFiltered = !effectiveDayFilter
+        ? weekVisibleSlots
+        : weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
+      return dayFiltered;
+    }
 
-    if (!searchTerm.trim()) return dayFiltered;
-
-    return dayFiltered.filter((slot) => {
+    return slots.filter((slot) => {
+      if (selectedAgencyId && slot.agencyId !== selectedAgencyId) return false;
       if (slot.status !== 'booked' || !slot.bookingId) return false;
-      const booking = bookings.find((b) => b.id === slot.bookingId && b.status !== 'cancelled');
-      return matchesBookingSearch(booking, searchTerm);
+      const b = bookings.find((bk) => bk.id === slot.bookingId && bk.status !== 'cancelled');
+      if (!b) return false;
+      if (isConstrutora) {
+        if (!doesBookingBelongToConstrutora(b)) return false;
+      } else {
+        if (b.partnerId !== activePartner.id) return false;
+      }
+      return matchesBookingSearch(b, searchTerm);
     });
-  }, [weekVisibleSlots, effectiveDayFilter, searchTerm, bookings]);
+  }, [
+    weekVisibleSlots,
+    effectiveDayFilter,
+    searchTerm,
+    slots,
+    bookings,
+    selectedAgencyId,
+    isConstrutora,
+    activePartner.id,
+    activeConstrutoraNameLower,
+  ]);
 
   // Available slots count (only starting from the next day for partners and for the selected agency/day/week)
   const availableThisWeekCount = useMemo(() => {
     if (!selectedAgencyId || !isSelectedAgencyAllowed) return 0;
-    return filteredSlots.filter((s) => s.status === 'available').length;
-  }, [filteredSlots, selectedAgencyId, isSelectedAgencyAllowed]);
+    return weekVisibleSlots.filter((s) => {
+      if (effectiveDayFilter && s.date !== effectiveDayFilter) return false;
+      return s.status === 'available';
+    }).length;
+  }, [weekVisibleSlots, effectiveDayFilter, selectedAgencyId, isSelectedAgencyAllowed]);
 
-  // Partner's / Construtora's bookings filtered by selected agency, week, or specific day and search term, ordered by date and time
+  // Partner's / Construtora's bookings filtered by selected agency, week, or specific day,
+  // OR across ALL bookings (futuros, presentes e passados) when searching
   const myBookings = useMemo(() => {
+    const isSearching = Boolean(searchTerm.trim());
     return bookings
       .filter((b) => {
         if (b.status !== 'confirmed') return false;
@@ -329,12 +368,14 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
           if (!allowedAgencies.some((ag) => ag.id === b.agencyId)) return false;
         }
 
-        const slot = slots.find((sl) => sl.id === b.slotId);
-        const bookingDate = slot?.date || b.slotDate || '';
-        if (effectiveDayFilter) {
-          if (bookingDate !== effectiveDayFilter) return false;
-        } else {
-          if (!weekDateSet.has(bookingDate)) return false;
+        if (!isSearching) {
+          const slot = slots.find((sl) => sl.id === b.slotId);
+          const bookingDate = slot?.date || b.slotDate || '';
+          if (effectiveDayFilter) {
+            if (bookingDate !== effectiveDayFilter) return false;
+          } else {
+            if (!weekDateSet.has(bookingDate)) return false;
+          }
         }
 
         if (isConstrutora) {
@@ -388,10 +429,40 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     return weekDays.filter((wd) => (allWeekSlotsByDate.get(wd.dateStr) || []).length > 0);
   }, [weekDays, allWeekSlotsByDate]);
 
+  // Dynamic days when searching across all dates (past, present, future)
+  const searchDays = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    const uniqueDates = Array.from(new Set(filteredSlots.map((s) => s.date))).sort();
+    return uniqueDates.map((dateStr) => {
+      const parts = dateStr.split('-');
+      const d =
+        parts.length === 3
+          ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+          : new Date(dateStr + 'T12:00:00');
+      const dayOfWeek = d.getDay();
+      return {
+        dateStr,
+        dateObj: d,
+        dayOfWeek,
+        label: DAYS_OF_WEEK.find((dw) => dw.id === dayOfWeek)?.name || '',
+        short: DAYS_OF_WEEK.find((dw) => dw.id === dayOfWeek)?.short || '',
+      };
+    });
+  }, [filteredSlots, searchTerm]);
+
+  // Days to render in the calendar tab
+  const displayDays = useMemo(() => {
+    if (searchTerm.trim()) {
+      return searchDays;
+    }
+    return activeWeekDays;
+  }, [searchTerm, searchDays, activeWeekDays]);
+
   // Group filtered slots by date
   const slotsByDate = useMemo(() => {
     const map = new Map<string, TimeSlot[]>();
-    weekDays.forEach((wd) => map.set(wd.dateStr, []));
+    const daysToMap = searchTerm.trim() ? searchDays : weekDays;
+    daysToMap.forEach((wd) => map.set(wd.dateStr, []));
 
     filteredSlots.forEach((slot) => {
       const list = map.get(slot.date) || [];
@@ -401,7 +472,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     });
 
     return map;
-  }, [filteredSlots, weekDays]);
+  }, [filteredSlots, searchTerm, searchDays, weekDays]);
 
   const sortedPartners = useMemo(() => {
     return [...partners]
@@ -689,6 +760,422 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
     dashboardAgencyFilter,
   ]);
 
+  const partnerDashboardData = useMemo(() => {
+    // All confirmed bookings made by this partner
+    const allPartnerBookings = bookings.filter((b) => {
+      if (b.status === 'cancelled') return false;
+      if (b.partnerId !== activePartner.id) return false;
+      if (dashboardAgencyFilter !== 'all' && b.agencyId !== dashboardAgencyFilter) {
+        return false;
+      }
+      return true;
+    });
+
+    const totalEntrevistas = allPartnerBookings.length;
+    const totalAprovados = allPartnerBookings.filter((b) => b.outcome === 'Aprovado').length;
+    const totalNegados = allPartnerBookings.filter((b) => b.outcome === 'Reprovado').length;
+    const totalRemarcar = allPartnerBookings.filter((b) => b.outcome === 'Remarcar').length;
+    const totalNaoCompareceu = allPartnerBookings.filter((b) => b.outcome === 'Não compareceu').length;
+    const totalPendentes = allPartnerBookings.filter((b) => !b.outcome).length;
+
+    const totalFidelizacao = allPartnerBookings.reduce((acc, b) => {
+      return acc + parseFidelizacaoValor(b.fidelizacaoValor);
+    }, 0);
+
+    // Group bookings by Construtora or "Imóvel Individual"
+    const groupsMap = new Map<
+      string,
+      {
+        name: string;
+        logoUrl?: string;
+        isIndividual: boolean;
+        entrevistas: number;
+        aprovados: number;
+        negados: number;
+        remarcar: number;
+        naoCompareceu: number;
+        pendentes: number;
+        empreendimentos: Set<string>;
+      }
+    >();
+
+    allPartnerBookings.forEach((b) => {
+      const isIndividual = b.propertyType !== 'Empreendimento';
+      const rawName = isIndividual
+        ? 'Imóvel Individual'
+        : b.construtoraName?.trim() || 'Outras Construtoras';
+      const key = isIndividual ? '__individual__' : rawName.toLowerCase();
+
+      const construtoraProfile = !isIndividual
+        ? partners.find(
+            (p) =>
+              p.segment?.toLowerCase() === 'construtora' &&
+              ((b.construtoraId && p.id === b.construtoraId) ||
+                (b.construtoraName && p.name?.toLowerCase() === b.construtoraName.toLowerCase()))
+          )
+        : undefined;
+
+      const current = groupsMap.get(key) || {
+        name: rawName,
+        logoUrl: construtoraProfile?.logoUrl?.trim(),
+        isIndividual,
+        entrevistas: 0,
+        aprovados: 0,
+        negados: 0,
+        remarcar: 0,
+        naoCompareceu: 0,
+        pendentes: 0,
+        empreendimentos: new Set<string>(),
+      };
+
+      current.entrevistas += 1;
+      if (b.outcome === 'Aprovado') current.aprovados += 1;
+      else if (b.outcome === 'Reprovado') current.negados += 1;
+      else if (b.outcome === 'Remarcar') current.remarcar += 1;
+      else if (b.outcome === 'Não compareceu') current.naoCompareceu += 1;
+      else current.pendentes += 1;
+
+      if (b.empreendimentoName?.trim()) {
+        current.empreendimentos.add(b.empreendimentoName.trim());
+      }
+
+      groupsMap.set(key, current);
+    });
+
+    const perConstrutora = Array.from(groupsMap.values()).sort(
+      (a, b) => b.entrevistas - a.entrevistas
+    );
+
+    return {
+      totalEntrevistas,
+      totalAprovados,
+      totalNegados,
+      totalRemarcar,
+      totalNaoCompareceu,
+      totalPendentes,
+      totalFidelizacao,
+      perConstrutora,
+    };
+  }, [bookings, activePartner.id, dashboardAgencyFilter, partners]);
+
+  if (!isConstrutora && partnerActiveView === 'dashboard') {
+    const {
+      totalEntrevistas,
+      totalAprovados,
+      totalNegados,
+      totalRemarcar,
+      totalNaoCompareceu,
+      totalPendentes,
+      totalFidelizacao,
+      perConstrutora,
+    } = partnerDashboardData;
+
+    const totalAvaliados = totalAprovados + totalNegados;
+    const approvalRate =
+      totalAvaliados > 0 ? Math.round((totalAprovados / totalAvaliados) * 100) : 0;
+    const denialRate =
+      totalAvaliados > 0 ? Math.round((totalNegados / totalAvaliados) * 100) : 0;
+
+    return (
+      <div className="space-y-6">
+        {/* Top Header */}
+        <div className="flex flex-col gap-3.5 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Dashboard —{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
+                  {activePartner.name}
+                </span>
+              </h2>
+              <p className="text-sm text-slate-400 mt-1 w-full leading-relaxed">
+                Acompanhe o desempenho das suas entrevistas, aprovações, pareceres e volume de fidelização.
+              </p>
+            </div>
+
+            {allowedAgencies.length > 1 && (
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="text-xs font-semibold text-slate-300 shrink-0">
+                  Agência:
+                </label>
+                <select
+                  value={dashboardAgencyFilter}
+                  onChange={(e) => setDashboardAgencyFilter(e.target.value)}
+                  className="syncz-agency-select px-3 py-2 rounded-xl bg-slate-950 border border-cyan-500/45 text-xs font-semibold text-white focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
+                >
+                  <option value="all">Todas as Agências ({allowedAgencies.length})</option>
+                  {allowedAgencies.map((ag) => (
+                    <option key={ag.id} value={ag.id}>
+                      {ag.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPartnerActiveView('schedule')}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar para Agenda
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Summary KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-md">
+            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-400">
+              <span>Total de Entrevistas</span>
+              <span className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
+                <CalendarCheck className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white mt-2">
+              {totalEntrevistas}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              Agendamentos realizados
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-md">
+            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-400">
+              <span>Aprovados</span>
+              <span className="p-2 rounded-xl bg-[#00a8ff]/15 border border-[#00a8ff]/35 text-[#00a8ff]">
+                <CheckCircle2 className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-[#00a8ff] mt-2">
+              {totalAprovados}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              {totalAvaliados > 0
+                ? `${approvalRate}% dos avaliados`
+                : 'Nenhuma entrevista avaliada'}
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-md">
+            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-400">
+              <span>Negados</span>
+              <span className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-400">
+                <XCircle className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-rose-400 mt-2">
+              {totalNegados}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              {totalAvaliados > 0
+                ? `${denialRate}% dos avaliados`
+                : 'Nenhuma entrevista avaliada'}
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-md">
+            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-400">
+              <span>Fidelização Total</span>
+              <span className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                <Banknote className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-2 truncate">
+              R$ {totalFidelizacao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              {totalPendentes > 0 ? `${totalPendentes} aguardando parecer` : 'Volume total negociado'}
+            </div>
+          </div>
+        </div>
+
+        {/* Pareceres Breakdown Card */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-md space-y-4">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3.5">
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold text-white">
+                Distribuição de Pareceres
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Situação atual dos clientes encaminhados para entrevista na agência.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-[#00a8ff]/30 text-center">
+              <span className="text-[11px] font-semibold text-[#00a8ff]">Aprovados</span>
+              <div className="text-xl font-extrabold text-[#00a8ff] mt-1">{totalAprovados}</div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-rose-500/30 text-center">
+              <span className="text-[11px] font-semibold text-rose-400">Reprovados</span>
+              <div className="text-xl font-extrabold text-rose-400 mt-1">{totalNegados}</div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-amber-500/30 text-center">
+              <span className="text-[11px] font-semibold text-amber-400">Remarcar</span>
+              <div className="text-xl font-extrabold text-amber-400 mt-1">{totalRemarcar}</div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-orange-500/30 text-center">
+              <span className="text-[11px] font-semibold text-orange-400">Não Compareceu</span>
+              <div className="text-xl font-extrabold text-orange-400 mt-1">{totalNaoCompareceu}</div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-700 text-center col-span-2 sm:col-span-1">
+              <span className="text-[11px] font-semibold text-slate-400">Aguardando Parecer</span>
+              <div className="text-xl font-extrabold text-white mt-1">{totalPendentes}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Construtoras e Imóveis Breakdown Card */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-md space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3.5">
+            <div>
+              <h3 className="text-base sm:text-lg font-extrabold text-white">
+                Entrevistas por Construtora & Tipo de Imóvel
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Acompanhe o volume e a taxa de aprovação por construtora parceira e imóveis individuais.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 self-start sm:self-auto">
+              <Building2 className="w-3.5 h-3.5 text-amber-400" />
+              {perConstrutora.length} {perConstrutora.length === 1 ? 'origem' : 'origens'}
+            </span>
+          </div>
+
+          {perConstrutora.length === 0 ? (
+            <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-8 text-center">
+              <CalendarCheck className="w-9 h-9 text-cyan-400 mx-auto mb-2.5 opacity-80" />
+              <h4 className="text-sm sm:text-base font-bold text-white">
+                Nenhum agendamento registrado
+              </h4>
+              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                Assim que você realizar agendamentos de empreendimentos ou imóveis individuais, os dados detalhados aparecerão aqui.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {perConstrutora.map((item) => {
+                const itemAvaliados = item.aprovados + item.negados;
+                const aprovadosPct =
+                  itemAvaliados > 0 ? Math.round((item.aprovados / itemAvaliados) * 100) : 0;
+                const negadosPct =
+                  itemAvaliados > 0 ? Math.round((item.negados / itemAvaliados) * 100) : 0;
+                const empsCount = item.empreendimentos.size;
+
+                return (
+                  <div
+                    key={item.name}
+                    className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2.5">
+                          {item.isIndividual ? (
+                            <span className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                              <Home className="w-4 h-4" />
+                            </span>
+                          ) : item.logoUrl ? (
+                            <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                              <img
+                                src={item.logoUrl}
+                                alt={item.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <span className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                              <Building2 className="w-4 h-4" />
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-white text-sm sm:text-base truncate">
+                              {item.name}
+                            </h4>
+                            {!item.isIndividual && empsCount > 0 && (
+                              <p className="text-xs text-slate-400 truncate">
+                                {Array.from(item.empreendimentos).join(', ')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Metrics Badges */}
+                      <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3 shrink-0">
+                        <div className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-center min-w-[92px]">
+                          <div className="text-[11px] font-semibold text-slate-400">
+                            Entrevistas
+                          </div>
+                          <div className="text-base sm:text-lg font-extrabold text-white mt-0.5">
+                            {item.entrevistas}
+                          </div>
+                        </div>
+
+                        <div className="px-3 py-2 rounded-xl bg-slate-900 border border-[#00a8ff]/35 text-center min-w-[92px]">
+                          <div className="text-[11px] font-semibold text-[#00a8ff]">
+                            Aprovados
+                          </div>
+                          <div className="text-base sm:text-lg font-extrabold text-[#00a8ff] mt-0.5">
+                            {item.aprovados}
+                          </div>
+                        </div>
+
+                        <div className="px-3 py-2 rounded-xl bg-slate-900 border border-rose-500/35 text-center min-w-[92px]">
+                          <div className="text-[11px] font-semibold text-rose-400">
+                            Negados
+                          </div>
+                          <div className="text-base sm:text-lg font-extrabold text-rose-400 mt-0.5">
+                            {item.negados}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {itemAvaliados > 0 && (
+                      <div className="space-y-1">
+                        <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                          {item.aprovados > 0 && (
+                            <div
+                              style={{ width: `${(item.aprovados / itemAvaliados) * 100}%` }}
+                              className="h-full bg-[#00a8ff] transition-all"
+                              title={`Aprovados: ${item.aprovados} (${aprovadosPct}% dos avaliados)`}
+                            />
+                          )}
+                          {item.negados > 0 && (
+                            <div
+                              style={{ width: `${(item.negados / itemAvaliados) * 100}%` }}
+                              className="h-full bg-rose-500 transition-all"
+                              title={`Negados: ${item.negados} (${negadosPct}% dos avaliados)`}
+                            />
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-400">
+                          <span>Aprovação: {aprovadosPct}%</span>
+                          <span>Negados: {negadosPct}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (isConstrutora && construtoraActiveView === 'dashboard') {
     const {
       totalEmpreendimentos,
@@ -699,10 +1186,11 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
       unmatchedStats,
     } = construtoraDashboardData;
 
+    const totalAvaliados = totalAprovados + totalNegados;
     const approvalRate =
-      totalEntrevistas > 0 ? Math.round((totalAprovados / totalEntrevistas) * 100) : 0;
+      totalAvaliados > 0 ? Math.round((totalAprovados / totalAvaliados) * 100) : 0;
     const denialRate =
-      totalEntrevistas > 0 ? Math.round((totalNegados / totalEntrevistas) * 100) : 0;
+      totalAvaliados > 0 ? Math.round((totalNegados / totalAvaliados) * 100) : 0;
 
     return (
       <div className="space-y-6">
@@ -806,8 +1294,8 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
               {totalAprovados}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
-              {totalEntrevistas > 0
-                ? `${approvalRate}% das entrevistas`
+              {totalAvaliados > 0
+                ? `${approvalRate}% dos avaliados`
                 : 'Nenhuma entrevista avaliada'}
             </div>
           </div>
@@ -823,9 +1311,9 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
               {totalNegados}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
-              {totalEntrevistas > 0
-                ? `${denialRate}% das entrevistas`
-                : 'Nenhuma entrevista negada'}
+              {totalAvaliados > 0
+                ? `${denialRate}% dos avaliados`
+                : 'Nenhuma entrevista avaliada'}
             </div>
           </div>
         </div>
@@ -864,10 +1352,11 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                 const locationLabel = emp.city
                   ? `${emp.city}${emp.state ? `/${emp.state}` : ''}`
                   : emp.state || '';
+                const empAvaliados = aprovados + negados;
                 const aprovadosPct =
-                  entrevistas > 0 ? Math.round((aprovados / entrevistas) * 100) : 0;
+                  empAvaliados > 0 ? Math.round((aprovados / empAvaliados) * 100) : 0;
                 const negadosPct =
-                  entrevistas > 0 ? Math.round((negados / entrevistas) * 100) : 0;
+                  empAvaliados > 0 ? Math.round((negados / empAvaliados) * 100) : 0;
 
                 return (
                   <div
@@ -924,22 +1413,22 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Progress bar when there is at least 1 interview */}
-                    {entrevistas > 0 && (
+                    {/* Progress bar when there is at least 1 evaluated interview */}
+                    {empAvaliados > 0 && (
                       <div className="space-y-1">
                         <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
                           {aprovados > 0 && (
                             <div
-                              style={{ width: `${(aprovados / entrevistas) * 100}%` }}
+                              style={{ width: `${(aprovados / empAvaliados) * 100}%` }}
                               className="h-full bg-[#00a8ff] transition-all"
-                              title={`Aprovados: ${aprovados} (${aprovadosPct}%)`}
+                              title={`Aprovados: ${aprovados} (${aprovadosPct}% dos avaliados)`}
                             />
                           )}
                           {negados > 0 && (
                             <div
-                              style={{ width: `${(negados / entrevistas) * 100}%` }}
+                              style={{ width: `${(negados / empAvaliados) * 100}%` }}
                               className="h-full bg-rose-500 transition-all"
-                              title={`Negados: ${negados} (${negadosPct}%)`}
+                              title={`Negados: ${negados} (${negadosPct}% dos avaliados)`}
                             />
                           )}
                         </div>
@@ -1325,18 +1814,22 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
           </p>
         </div>
 
-        {isConstrutora && (
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setConstrutoraActiveView('dashboard')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white font-semibold text-xs sm:text-sm shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Dashboard</span>
-            </button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (isConstrutora) {
+                setConstrutoraActiveView('dashboard');
+              } else {
+                setPartnerActiveView('dashboard');
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white font-semibold text-xs sm:text-sm shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Dashboard</span>
+          </button>
+        </div>
       </div>
 
       {/* Week Tag + Day Filter Chips + View Buttons Card */}
@@ -1533,17 +2026,19 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-10 text-center text-slate-400 text-xs">
               Selecione uma agência acima para visualizar os horários desta agência.
             </div>
-          ) : activeWeekDays.length === 0 || filteredSlots.length === 0 ? (
+          ) : displayDays.length === 0 || filteredSlots.length === 0 ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-10 text-center text-slate-400 text-xs">
-              {isTodayMode
-                ? 'Nenhum horário aberto para este dia nesta agência.'
-                : 'Nenhum horário aberto para esta semana nesta agência.'}
+              {searchTerm.trim()
+                ? `Nenhum agendamento encontrado para "${searchTerm}".`
+                : isTodayMode
+                  ? 'Nenhum horário aberto para este dia nesta agência.'
+                  : 'Nenhum horário aberto para esta semana nesta agência.'}
             </div>
           ) : (
             /* Weekly Slots List Directly on Background */
             <div className="space-y-4 w-full">
-              {activeWeekDays.map((wd) => {
-                if (effectiveDayFilter && effectiveDayFilter !== wd.dateStr) {
+              {displayDays.map((wd) => {
+                if (!searchTerm.trim() && effectiveDayFilter && effectiveDayFilter !== wd.dateStr) {
                   return null;
                 }
 
@@ -1591,20 +2086,26 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
               <CalendarDays className="w-12 h-12 text-slate-600 mx-auto mb-3" />
               <h3 className="text-lg font-bold text-white mb-1">
-                Nenhum agendamento ativo para {activePartner.name}
+                {searchTerm.trim()
+                  ? `Nenhum agendamento encontrado para "${searchTerm}"`
+                  : `Nenhum agendamento ativo para ${activePartner.name}`}
               </h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto mb-4">
-                {isConstrutora
-                  ? 'Consulte a aba de horários da semana para visualizar a agenda.'
-                  : 'Explore a aba de horários da semana e clique em um horário aberto para preencher os dados do agendamento com confirmação automática imediata.'}
+                {searchTerm.trim()
+                  ? 'Verifique se o nome do cliente, parceiro, construtora ou CPF foram digitados corretamente.'
+                  : isConstrutora
+                    ? 'Consulte a aba de horários da semana para visualizar a agenda.'
+                    : 'Explore a aba de horários da semana e clique em um horário aberto para preencher os dados do agendamento com confirmação automática imediata.'}
               </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab('available_slots')}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white font-semibold text-xs transition-all shadow-lg shadow-cyan-500/25"
-              >
-                Ver Horários Disponíveis
-              </button>
+              {!searchTerm.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('available_slots')}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white font-semibold text-xs transition-all shadow-lg shadow-cyan-500/25 cursor-pointer"
+                >
+                  Ver Horários Disponíveis
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-2.5 w-full">

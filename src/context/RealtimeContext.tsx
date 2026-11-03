@@ -58,8 +58,12 @@ interface RealtimeContextValue {
   setAdminPerspective: (
     perspective: 'admin_master' | 'agency_view' | 'partner_view' | 'construtora_view'
   ) => void;
-  agencyActiveView: 'schedule' | 'partners' | 'construtoras' | 'users';
-  setAgencyActiveView: (view: 'schedule' | 'partners' | 'construtoras' | 'users') => void;
+  agencyActiveView: 'schedule' | 'dashboard' | 'partners' | 'construtoras' | 'users';
+  setAgencyActiveView: (
+    view: 'schedule' | 'dashboard' | 'partners' | 'construtoras' | 'users'
+  ) => void;
+  partnerActiveView: 'schedule' | 'dashboard';
+  setPartnerActiveView: (view: 'schedule' | 'dashboard') => void;
   construtoraActiveView: 'schedule' | 'dashboard' | 'partners' | 'empreendimentos';
   setConstrutoraActiveView: (
     view: 'schedule' | 'dashboard' | 'partners' | 'empreendimentos'
@@ -375,15 +379,18 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'admin_master' | 'agency_view' | 'partner_view' | 'construtora_view'
   >('admin_master');
 
-  // Active sub-view inside Agency perspective ('schedule' | 'partners' | 'construtoras' | 'users')
+  // Active sub-view inside Agency perspective ('schedule' | 'dashboard' | 'partners' | 'construtoras' | 'users')
   const [agencyActiveView, setAgencyActiveView] = useState<
-    'schedule' | 'partners' | 'construtoras' | 'users'
+    'schedule' | 'dashboard' | 'partners' | 'construtoras' | 'users'
   >('schedule');
 
   // Active sub-view inside Construtora perspective ('schedule' | 'dashboard' | 'partners' | 'empreendimentos')
   const [construtoraActiveView, setConstrutoraActiveView] = useState<
     'schedule' | 'dashboard' | 'partners' | 'empreendimentos'
   >('schedule');
+
+  // Active sub-view inside Partner perspective ('schedule' | 'dashboard')
+  const [partnerActiveView, setPartnerActiveView] = useState<'schedule' | 'dashboard'>('schedule');
 
   const [toasts, setToasts] = useState<ToastAlert[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
@@ -433,6 +440,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const login = (session: UserSession) => {
     setCurrentUser(session);
     setAgencyActiveView('schedule');
+    setPartnerActiveView('schedule');
     setConstrutoraActiveView('schedule');
     if (session.role === 'agency' && session.agencyId) {
       const foundAg = agencies.find((a) => a.id === session.agencyId);
@@ -2237,6 +2245,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setAdminPerspective,
         agencyActiveView,
         setAgencyActiveView,
+        partnerActiveView,
+        setPartnerActiveView,
         construtoraActiveView,
         setConstrutoraActiveView,
         loginWithCredentials,

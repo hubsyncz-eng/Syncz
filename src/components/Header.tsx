@@ -26,6 +26,8 @@ export const Header: React.FC<HeaderProps> = () => {
     setAdminPerspective,
     agencyActiveView,
     setAgencyActiveView,
+    partnerActiveView,
+    setPartnerActiveView,
     construtoraActiveView,
     setConstrutoraActiveView,
     theme,
@@ -148,9 +150,12 @@ export const Header: React.FC<HeaderProps> = () => {
                 } else if (isConstrutoraView) {
                   setConstrutoraActiveView('schedule');
                   setIsMenuOpen(false);
+                } else if (isPartnerView) {
+                  setPartnerActiveView('schedule');
+                  setIsMenuOpen(false);
                 }
               }}
-              className={isAgencyView || isConstrutoraView ? 'cursor-pointer' : ''}
+              className={isAgencyView || isConstrutoraView || isPartnerView ? 'cursor-pointer' : ''}
             >
               <h1 className="syncz-brand-title font-extrabold text-xl sm:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
                 Syncz
@@ -160,87 +165,129 @@ export const Header: React.FC<HeaderProps> = () => {
             {/* Agency / Partner View Left Options Bar */}
             {hasSideMenu && isMenuOpen && (
               <div className="syncz-agency-menu absolute left-0 top-full mt-2.5 w-56 rounded-2xl bg-slate-900 border border-slate-700/90 shadow-2xl py-2 z-50 overflow-hidden animate-in fade-in">
-                {isAgencyView && !currentUser?.isAgencyUser && (
+                {isAgencyView && (
                   <>
                     <button
                       type="button"
                       onClick={() => {
-                        const targetAgency = currentAgency || agencies.find((a) => a.id === currentUser?.agencyId) || agencies[0];
-                        openAgencyModal(targetAgency);
-                        setIsMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-                    >
-                      <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
-                      <span>Dados da Agência</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAgencyActiveView(agencyActiveView === 'partners' ? 'schedule' : 'partners');
-                        setIsMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        agencyActiveView === 'partners'
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
-                      }`}
-                    >
-                      <Users className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span>Parceiros</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
                         setAgencyActiveView(
-                          agencyActiveView === 'construtoras' ? 'schedule' : 'construtoras'
+                          agencyActiveView === 'dashboard' ? 'schedule' : 'dashboard'
                         );
                         setIsMenuOpen(false);
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        agencyActiveView === 'construtoras'
+                        agencyActiveView === 'dashboard'
                           ? 'bg-cyan-500/20 text-cyan-300'
                           : 'text-slate-200 hover:bg-slate-800 hover:text-white'
                       }`}
                     >
-                      <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>Construtoras</span>
+                      <BarChart3 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>Dashboard</span>
+                    </button>
+
+                    {!currentUser?.isAgencyUser && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetAgency = currentAgency || agencies.find((a) => a.id === currentUser?.agencyId) || agencies[0];
+                            openAgencyModal(targetAgency);
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <Building2 className="w-4 h-4 text-blue-400 shrink-0" />
+                          <span>Dados da Agência</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAgencyActiveView(agencyActiveView === 'partners' ? 'schedule' : 'partners');
+                            setIsMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                            agencyActiveView === 'partners'
+                              ? 'bg-cyan-500/20 text-cyan-300'
+                              : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <Users className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <span>Parceiros</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAgencyActiveView(
+                              agencyActiveView === 'construtoras' ? 'schedule' : 'construtoras'
+                            );
+                            setIsMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                            agencyActiveView === 'construtoras'
+                              ? 'bg-cyan-500/20 text-cyan-300'
+                              : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>Construtoras</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAgencyActiveView(agencyActiveView === 'users' ? 'schedule' : 'users');
+                            setIsMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                            agencyActiveView === 'users'
+                              ? 'bg-cyan-500/20 text-cyan-300'
+                              : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <UserCheck className="w-4 h-4 text-blue-400 shrink-0" />
+                          <span>Usuários</span>
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {isPartnerView && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPartnerActiveView(
+                          partnerActiveView === 'dashboard' ? 'schedule' : 'dashboard'
+                        );
+                        setIsMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                        partnerActiveView === 'dashboard'
+                          ? 'bg-cyan-500/20 text-cyan-300'
+                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>Dashboard</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => {
-                        setAgencyActiveView(agencyActiveView === 'users' ? 'schedule' : 'users');
+                        const activePartnerId = currentUser?.role === 'partner' ? (currentUser.partnerId || currentUser.id) : currentPartner?.id;
+                        const targetPartner = partners.find((p) => p.id === activePartnerId) || currentPartner || partners[0];
+                        openPartnerModal(targetPartner);
                         setIsMenuOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                        agencyActiveView === 'users'
-                          ? 'bg-cyan-500/20 text-cyan-300'
-                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
-                      }`}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
                     >
-                      <UserCheck className="w-4 h-4 text-blue-400 shrink-0" />
-                      <span>Usuários</span>
+                      <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>Dados Cadastrais</span>
                     </button>
                   </>
-                )}
-
-                {isPartnerView && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const activePartnerId = currentUser?.role === 'partner' ? (currentUser.partnerId || currentUser.id) : currentPartner?.id;
-                      const targetPartner = partners.find((p) => p.id === activePartnerId) || currentPartner || partners[0];
-                      openPartnerModal(targetPartner);
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Dados Cadastrais</span>
-                  </button>
                 )}
 
                 {isConstrutoraView && (
@@ -278,7 +325,7 @@ export const Header: React.FC<HeaderProps> = () => {
                           (currentPartner?.segment?.toLowerCase() === 'construtora'
                             ? currentPartner
                             : construtoraList[0]);
-                        openPartnerModal(targetConstrutora, 'construtora');
+                        openPartnerModal(targetConstrutora);
                         setIsMenuOpen(false);
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"

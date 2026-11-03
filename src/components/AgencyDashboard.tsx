@@ -11,6 +11,7 @@ import {
 import { SlotCard } from './SlotCard.tsx';
 import { PartnerRegisterModal } from './PartnerRegisterModal.tsx';
 import { PartnerView } from './PartnerView.tsx';
+import { AgencyAnalyticsDashboard } from './AgencyAnalyticsDashboard.tsx';
 import {
   CalendarDays,
   CalendarCheck,
@@ -28,6 +29,8 @@ import {
   Trash2,
   Edit3,
   Search,
+  Building2,
+  BarChart3,
 } from 'lucide-react';
 
 interface AgencyDashboardProps {
@@ -206,10 +209,19 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     const partnerMatch = (b.partnerName || '').toLowerCase().includes(rawTerm);
     const construtoraMatch = (b.construtoraName || '').toLowerCase().includes(rawTerm);
     const clientNameMatch = (b.clientName || '').toLowerCase().includes(rawTerm);
+    const repMatch = (b.partnerRepresentative || '').toLowerCase().includes(rawTerm);
+    const empMatch = (b.empreendimentoName || '').toLowerCase().includes(rawTerm);
     const clientCpfMatch =
       (b.clientCpf || '').toLowerCase().includes(rawTerm) ||
       (cleanCpfTerm.length > 0 && (b.clientCpf || '').replace(/\D/g, '').includes(cleanCpfTerm));
-    return partnerMatch || construtoraMatch || clientNameMatch || clientCpfMatch;
+    return (
+      partnerMatch ||
+      construtoraMatch ||
+      clientNameMatch ||
+      repMatch ||
+      empMatch ||
+      clientCpfMatch
+    );
   };
 
   // Calculate target date when in daily (Hoje) mode
@@ -263,24 +275,31 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   const effectiveDayFilter = isTodayMode ? targetDayDate.dateStr : selectedDayFilter;
 
   // Filtered slots for calendar
+  // When searching: search across ALL booked slots (passados, presentes e futuros)
   const filteredSlots = useMemo(() => {
-    const dayFiltered = !effectiveDayFilter
-      ? weekVisibleSlots
-      : weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
+    const isSearching = Boolean(searchTerm.trim());
+    if (!isSearching) {
+      const dayFiltered = !effectiveDayFilter
+        ? weekVisibleSlots
+        : weekVisibleSlots.filter((slot) => slot.date === effectiveDayFilter);
+      return dayFiltered;
+    }
 
-    if (!searchTerm.trim()) return dayFiltered;
-
-    return dayFiltered.filter((slot) => {
+    return slots.filter((slot) => {
+      if (activeAgencyId && slot.agencyId && slot.agencyId !== activeAgencyId) return false;
       if (slot.status !== 'booked' || !slot.bookingId) return false;
       const booking = bookings.find((b) => b.id === slot.bookingId && b.status !== 'cancelled');
       return matchesBookingSearch(booking, searchTerm);
     });
-  }, [weekVisibleSlots, effectiveDayFilter, searchTerm, bookings]);
+  }, [weekVisibleSlots, effectiveDayFilter, searchTerm, slots, bookings, activeAgencyId]);
 
   // Available slots count considering current week/day filter
   const availableThisWeekCount = useMemo(() => {
-    return filteredSlots.filter((s) => s.status === 'available').length;
-  }, [filteredSlots]);
+    return weekVisibleSlots.filter((s) => {
+      if (effectiveDayFilter && s.date !== effectiveDayFilter) return false;
+      return s.status === 'available';
+    }).length;
+  }, [weekVisibleSlots, effectiveDayFilter]);
 
   // Group all week visible slots by date (to filter out days with no schedule)
   const allWeekSlotsByDate = useMemo(() => {
@@ -302,10 +321,40 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return weekDays.filter((wd) => (allWeekSlotsByDate.get(wd.dateStr) || []).length > 0);
   }, [weekDays, allWeekSlotsByDate]);
 
+  // Dynamic days when searching across all dates (past, present, future)
+  const searchDays = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    const uniqueDates = Array.from(new Set(filteredSlots.map((s) => s.date))).sort();
+    return uniqueDates.map((dateStr) => {
+      const parts = dateStr.split('-');
+      const d =
+        parts.length === 3
+          ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+          : new Date(dateStr + 'T12:00:00');
+      const dayOfWeek = d.getDay();
+      return {
+        dateStr,
+        dateObj: d,
+        dayOfWeek,
+        label: DAYS_OF_WEEK.find((dw) => dw.id === dayOfWeek)?.name || '',
+        short: DAYS_OF_WEEK.find((dw) => dw.id === dayOfWeek)?.short || '',
+      };
+    });
+  }, [filteredSlots, searchTerm]);
+
+  // Days to render in the calendar tab
+  const displayDays = useMemo(() => {
+    if (searchTerm.trim()) {
+      return searchDays;
+    }
+    return activeWeekDays;
+  }, [searchTerm, searchDays, activeWeekDays]);
+
   // Group filtered slots by date
   const slotsByDate = useMemo(() => {
     const map = new Map<string, TimeSlot[]>();
-    weekDays.forEach((wd) => map.set(wd.dateStr, []));
+    const daysToMap = searchTerm.trim() ? searchDays : weekDays;
+    daysToMap.forEach((wd) => map.set(wd.dateStr, []));
 
     filteredSlots.forEach((slot) => {
       const list = map.get(slot.date) || [];
@@ -315,20 +364,27 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     });
 
     return map;
-  }, [filteredSlots, weekDays]);
+  }, [filteredSlots, searchTerm, searchDays, weekDays]);
 
-  // Confirmed bookings list filtered by current week/day filter and search term, ordered by date and time
+  // Confirmed bookings list filtered by current week/day filter, OR across ALL dates (futuros, presentes e passados) when searching
   const filteredBookings = useMemo(() => {
+    const isSearching = Boolean(searchTerm.trim());
     return bookings
       .filter((b) => {
         if (b.status !== 'confirmed') return false;
+        if (activeAgencyId && b.agencyId && b.agencyId !== activeAgencyId) return false;
         const slot = slots.find((sl) => sl.id === b.slotId);
-        const bookingDate = slot?.date || b.slotDate || '';
-        if (effectiveDayFilter) {
-          if (bookingDate !== effectiveDayFilter) return false;
-        } else {
-          if (!weekDateSet.has(bookingDate)) return false;
+        if (activeAgencyId && slot?.agencyId && slot.agencyId !== activeAgencyId) return false;
+
+        if (!isSearching) {
+          const bookingDate = slot?.date || b.slotDate || '';
+          if (effectiveDayFilter) {
+            if (bookingDate !== effectiveDayFilter) return false;
+          } else {
+            if (!weekDateSet.has(bookingDate)) return false;
+          }
         }
+
         return matchesBookingSearch(b, searchTerm);
       })
       .sort((a, b) => {
@@ -341,7 +397,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         const timeB = slotB?.startTime || b.slotStartTime || '';
         return timeA.localeCompare(timeB);
       });
-  }, [bookings, slots, searchTerm, effectiveDayFilter, weekDateSet]);
+  }, [bookings, slots, searchTerm, effectiveDayFilter, weekDateSet, activeAgencyId]);
 
   // Confirmed bookings count considering active filters
   const confirmedBookings = filteredBookings;
@@ -388,7 +444,9 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
   return (
     <div className="space-y-6">
-      {!currentUser?.isAgencyUser && agencyActiveView === 'partners' ? (
+      {agencyActiveView === 'dashboard' ? (
+        <AgencyAnalyticsDashboard onBackToSchedule={() => setAgencyActiveView('schedule')} />
+      ) : !currentUser?.isAgencyUser && agencyActiveView === 'partners' ? (
         <div className="space-y-6">
           <div className="flex flex-col gap-3.5 pt-1">
             <div>
@@ -769,6 +827,17 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
             Gerencie os horários disponíveis. Os parceiros negociais reservam seus horários em tempo real.
           </p>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setAgencyActiveView('dashboard')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-400 text-white font-semibold text-xs sm:text-sm shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Dashboard</span>
+          </button>
+        </div>
       </div>
 
       {/* Week Tag + Day Filter Chips + View Buttons Card */}
@@ -949,16 +1018,18 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
       {activeTab === 'calendar' && (
         <div className="space-y-4">
           {/* Calendar Grid (Days of Week with schedules) */}
-          {activeWeekDays.length === 0 || filteredSlots.length === 0 ? (
+          {displayDays.length === 0 || filteredSlots.length === 0 ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-10 text-center text-slate-400 text-xs">
-              {isTodayMode
-                ? 'Nenhum horário aberto para este dia.'
-                : 'Nenhum horário aberto para esta semana.'}
+              {searchTerm.trim()
+                ? `Nenhum agendamento encontrado para "${searchTerm}".`
+                : isTodayMode
+                  ? 'Nenhum horário aberto para este dia.'
+                  : 'Nenhum horário aberto para esta semana.'}
             </div>
           ) : (
             <div className="space-y-4 w-full">
-              {activeWeekDays.map((wd) => {
-                if (effectiveDayFilter && effectiveDayFilter !== wd.dateStr) {
+              {displayDays.map((wd) => {
+                if (!searchTerm.trim() && effectiveDayFilter && effectiveDayFilter !== wd.dateStr) {
                   return null;
                 }
 
@@ -1004,9 +1075,15 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           {filteredBookings.length === 0 ? (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
               <CheckCircle2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-white mb-1">Nenhum agendamento encontrado</h3>
+              <h3 className="text-lg font-bold text-white mb-1">
+                {searchTerm.trim()
+                  ? `Nenhum agendamento encontrado para "${searchTerm}"`
+                  : 'Nenhum agendamento encontrado'}
+              </h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Assim que os parceiros negociais escolherem seus horários, eles aparecerão aqui com status de confirmação automática imediata.
+                {searchTerm.trim()
+                  ? 'Verifique se o nome, parceiro, construtora ou CPF foram digitados corretamente.'
+                  : 'Assim que os parceiros negociais escolherem seus horários, eles aparecerão aqui com status de confirmação automática imediata.'}
               </p>
             </div>
           ) : (

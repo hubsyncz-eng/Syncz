@@ -659,6 +659,20 @@ html.light-mode .syncz-booking-date-text {
   line-height: 1.375rem !important;
 }
 
+.syncz-booking-day-text,
+html.light-mode .syncz-booking-day-text {
+  font-size: 0.8125rem !important;
+  line-height: 1.15 !important;
+  font-weight: 600 !important;
+}
+
+.syncz-booking-date-subtext,
+html.light-mode .syncz-booking-date-subtext {
+  font-size: 0.8125rem !important;
+  line-height: 1.15 !important;
+  font-weight: 700 !important;
+}
+
 .syncz-booking-meta-icon {
   color: #94a3b8 !important;
   width: 1.15rem !important;
@@ -893,12 +907,16 @@ html.light-mode .syncz-outcome-icon-aprovado * {
 }
 
 .syncz-slot-outcome-aprovado .syncz-booking-meta-icon,
-.syncz-slot-outcome-aprovado .syncz-booking-date-text {
+.syncz-slot-outcome-aprovado .syncz-booking-date-text,
+.syncz-slot-outcome-aprovado .syncz-booking-day-text,
+.syncz-slot-outcome-aprovado .syncz-booking-date-subtext {
   color: #00a8ff !important;
 }
 
 html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-meta-icon,
-html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-date-text {
+html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-date-text,
+html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-day-text,
+html.light-mode .syncz-slot-outcome-aprovado .syncz-booking-date-subtext {
   color: #00a8ff !important;
 }
 
@@ -910,12 +928,16 @@ html.light-mode .syncz-outcome-icon-reprovado * {
 }
 
 .syncz-slot-outcome-reprovado .syncz-booking-meta-icon,
-.syncz-slot-outcome-reprovado .syncz-booking-date-text {
+.syncz-slot-outcome-reprovado .syncz-booking-date-text,
+.syncz-slot-outcome-reprovado .syncz-booking-day-text,
+.syncz-slot-outcome-reprovado .syncz-booking-date-subtext {
   color: #f87171 !important;
 }
 
 html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-meta-icon,
-html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-date-text {
+html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-date-text,
+html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-day-text,
+html.light-mode .syncz-slot-outcome-reprovado .syncz-booking-date-subtext {
   color: #e11d48 !important;
 }
 
@@ -927,12 +949,16 @@ html.light-mode .syncz-outcome-icon-remarcar * {
 }
 
 .syncz-slot-outcome-remarcar .syncz-booking-meta-icon,
-.syncz-slot-outcome-remarcar .syncz-booking-date-text {
+.syncz-slot-outcome-remarcar .syncz-booking-date-text,
+.syncz-slot-outcome-remarcar .syncz-booking-day-text,
+.syncz-slot-outcome-remarcar .syncz-booking-date-subtext {
   color: #fbbf24 !important;
 }
 
 html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-meta-icon,
-html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-date-text {
+html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-date-text,
+html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-day-text,
+html.light-mode .syncz-slot-outcome-remarcar .syncz-booking-date-subtext {
   color: #b45309 !important;
 }
 
@@ -944,27 +970,39 @@ html.light-mode .syncz-outcome-icon-nao-compareceu * {
 }
 
 .syncz-slot-outcome-nao-compareceu .syncz-booking-meta-icon,
-.syncz-slot-outcome-nao-compareceu .syncz-booking-date-text {
+.syncz-slot-outcome-nao-compareceu .syncz-booking-date-text,
+.syncz-slot-outcome-nao-compareceu .syncz-booking-day-text,
+.syncz-slot-outcome-nao-compareceu .syncz-booking-date-subtext {
   color: #fb923c !important;
 }
 
 html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-meta-icon,
-html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-date-text {
+html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-date-text,
+html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-day-text,
+html.light-mode .syncz-slot-outcome-nao-compareceu .syncz-booking-date-subtext {
   color: #c2410c !important;
 }
 
 /* 18. Disabled Slot Cards & Available / Unmarked Booked Slot Gray Styling */
 .syncz-slot-available .syncz-booking-meta-icon,
 .syncz-slot-available .syncz-booking-date-text,
+.syncz-slot-available .syncz-booking-day-text,
+.syncz-slot-available .syncz-booking-date-subtext,
 .syncz-slot-booked-partner .syncz-booking-meta-icon,
-.syncz-slot-booked-partner .syncz-booking-date-text {
+.syncz-slot-booked-partner .syncz-booking-date-text,
+.syncz-slot-booked-partner .syncz-booking-day-text,
+.syncz-slot-booked-partner .syncz-booking-date-subtext {
   color: #94a3b8 !important;
 }
 
 html.light-mode .syncz-slot-available .syncz-booking-meta-icon,
 html.light-mode .syncz-slot-available .syncz-booking-date-text,
+html.light-mode .syncz-slot-available .syncz-booking-day-text,
+html.light-mode .syncz-slot-available .syncz-booking-date-subtext,
 html.light-mode .syncz-slot-booked-partner .syncz-booking-meta-icon,
-html.light-mode .syncz-slot-booked-partner .syncz-booking-date-text {
+html.light-mode .syncz-slot-booked-partner .syncz-booking-date-text,
+html.light-mode .syncz-slot-booked-partner .syncz-booking-day-text,
+html.light-mode .syncz-slot-booked-partner .syncz-booking-date-subtext {
   color: #64748b !important;
 }
 
