@@ -44,6 +44,10 @@ export const AgencyAnalyticsDashboard: React.FC<AgencyAnalyticsDashboardProps> =
   } = useRealtime();
 
   const activeAgency = useMemo(() => {
+    if (currentUser?.role === 'agency') {
+      const targetId = currentUser.agencyId || currentUser.id;
+      return agencies.find((a) => a.id === targetId) || currentAgency;
+    }
     return (
       currentAgency ||
       agencies.find((a) => a.id === currentUser?.agencyId) ||
@@ -101,11 +105,14 @@ export const AgencyAnalyticsDashboard: React.FC<AgencyAnalyticsDashboardProps> =
 
     return bookings.filter((b) => {
       // Must belong to this agency
-      if (b.agencyId !== activeAgency.id) return false;
+      const slot = slots.find((s) => s.id === b.slotId);
+      const bAgencyId = b.agencyId || slot?.agencyId;
+      if (bAgencyId !== activeAgency.id) return false;
+      if (slot?.agencyId && slot.agencyId !== activeAgency.id) return false;
       if (b.status === 'cancelled') return false;
 
       // Period filter
-      const bDate = b.slotDate || '';
+      const bDate = slot?.date || b.slotDate || '';
       if (periodFilter === 'today' && bDate !== todayIso) return false;
       if (periodFilter === 'week' && bDate < mondayIso) return false;
       if (periodFilter === 'month' && bDate < startOfMonthIso) return false;
@@ -154,6 +161,7 @@ export const AgencyAnalyticsDashboard: React.FC<AgencyAnalyticsDashboardProps> =
     });
   }, [
     bookings,
+    slots,
     activeAgency,
     periodFilter,
     partnerFilter,
@@ -408,7 +416,7 @@ export const AgencyAnalyticsDashboard: React.FC<AgencyAnalyticsDashboardProps> =
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {agencies.length > 1 && (
+            {currentUser?.role === 'admin' && agencies.length > 1 && (
               <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold text-slate-300 shrink-0">
                   Agência:

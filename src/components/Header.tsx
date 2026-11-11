@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = () => {
   }, [currentUser, adminPerspective]);
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 border-b border-slate-800 backdrop-blur-md text-white shadow-lg transition-colors duration-200">
+    <header className="sticky top-0 z-40 bg-slate-900/95 border-b border-slate-800 backdrop-blur-xl text-white shadow-lg transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
           
@@ -106,14 +106,14 @@ export const Header: React.FC<HeaderProps> = () => {
                         ? 'Abrir menu de opções da construtora'
                         : 'Syncz'
               }
-              className={`syncz-header-logo-box w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/15 via-blue-500/15 to-indigo-500/15 border border-cyan-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/10 transition-all ${
+              className={`syncz-header-logo-box w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-blue-500/20 to-indigo-500/20 border border-cyan-500/40 flex items-center justify-center shadow-lg shadow-cyan-500/15 transition-all ${
                 hasSideMenu
-                  ? 'cursor-pointer hover:border-cyan-400 hover:scale-105 active:scale-95'
+                  ? 'cursor-pointer hover:border-cyan-400 hover:scale-105'
                   : 'cursor-default'
               }`}
             >
               <svg
-                className="w-6 h-6"
+                className="w-6 h-6 drop-shadow-sm"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="url(#synczHeaderCalendarGrad)"
@@ -122,7 +122,7 @@ export const Header: React.FC<HeaderProps> = () => {
                 strokeLinejoin="round"
               >
                 <defs>
-                  <linearGradient id="synczHeaderCalendarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <linearGradient id="synczHeaderCalendarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#22d3ee" />
                     <stop offset="50%" stopColor="#60a5fa" />
                     <stop offset="100%" stopColor="#818cf8" />
@@ -130,7 +130,7 @@ export const Header: React.FC<HeaderProps> = () => {
                 </defs>
                 <path d="M8 2v4" />
                 <path d="M16 2v4" />
-                <rect width="18" height="18" x="3" y="4" rx="2" />
+                <rect width="18" height="18" x="3" y="4" rx="3" fill="rgba(34, 211, 238, 0.08)" />
                 <path d="M3 10h18" />
                 <path d="M8 14h.01" />
                 <path d="M12 14h.01" />
@@ -155,9 +155,9 @@ export const Header: React.FC<HeaderProps> = () => {
                   setIsMenuOpen(false);
                 }
               }}
-              className={isAgencyView || isConstrutoraView || isPartnerView ? 'cursor-pointer' : ''}
+              className={isAgencyView || isConstrutoraView || isPartnerView ? 'cursor-pointer group' : ''}
             >
-              <h1 className="syncz-brand-title font-extrabold text-xl sm:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
+              <h1 className="syncz-brand-title font-extrabold text-xl sm:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 drop-shadow-[0_2px_10px_rgba(34,211,238,0.22)]">
                 Syncz
               </h1>
             </div>
@@ -190,7 +190,14 @@ export const Header: React.FC<HeaderProps> = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            const targetAgency = currentAgency || agencies.find((a) => a.id === currentUser?.agencyId) || agencies[0];
+                            const targetAgencyId =
+                              currentUser?.role === 'agency'
+                                ? currentUser.agencyId || currentUser.id
+                                : currentAgency?.id || currentUser?.agencyId;
+                            const targetAgency =
+                              agencies.find((a) => a.id === targetAgencyId) ||
+                              currentAgency ||
+                              agencies[0];
                             openAgencyModal(targetAgency);
                             setIsMenuOpen(false);
                           }}

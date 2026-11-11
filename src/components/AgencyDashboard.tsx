@@ -64,8 +64,15 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   } = useRealtime();
 
   const activeAgencyId = useMemo(() => {
+    if (currentUser?.role === 'agency') {
+      return currentUser.agencyId || currentUser.id;
+    }
     return currentAgency?.id || currentUser?.agencyId || agencies[0]?.id || 'ag_1';
   }, [currentAgency, currentUser, agencies]);
+
+  const activeAgency = useMemo(() => {
+    return agencies.find((a) => a.id === activeAgencyId) || currentAgency;
+  }, [agencies, activeAgencyId, currentAgency]);
 
   const sortedPartners = useMemo(() => {
     return [...partners]
@@ -85,12 +92,12 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
   // Agency display name matching partner greeting style
   const agencyDisplayName = useMemo(() => {
-    const rawName = currentAgency?.name?.trim() || 'Central';
+    const rawName = activeAgency?.name?.trim() || currentUser?.name?.trim() || 'Central';
     if (rawName.toLowerCase().startsWith('agência') || rawName.toLowerCase().startsWith('agencia')) {
       return rawName;
     }
     return `Agência ${rawName}`;
-  }, [currentAgency]);
+  }, [activeAgency, currentUser]);
 
   // Partner / Construtora creation / editing / preview state inside Agency View
   const [isNewPartnerModalOpen, setIsNewPartnerModalOpen] = useState(false);
@@ -146,7 +153,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         });
       } else {
         await registerConsultant({
-          agencyId: currentUser?.agencyId || currentAgency?.id || 'ag_1',
+          agencyId: activeAgencyId,
           name: userName,
           email: userEmail,
           password: userPassword,
@@ -262,20 +269,21 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   const todayIso = formatDateToISO(new Date());
 
   // All visible slots for this week (before day filter)
-  // Do not show available slots from past days, only bookings
+  // Do not show available slots from past days, only bookings, and strictly isolate by activeAgencyId
   const weekVisibleSlots = useMemo(() => {
     return slots.filter((slot) => {
+      if (slot.agencyId !== activeAgencyId) return false;
       if (!weekDateSet.has(slot.date)) return false;
       if (slot.status === 'available' && slot.date < todayIso) return false;
       return true;
     });
-  }, [slots, weekDateSet, todayIso]);
+  }, [slots, weekDateSet, todayIso, activeAgencyId]);
 
   // Effective day filter (either from Hoje/daily mode or day chip click)
   const effectiveDayFilter = isTodayMode ? targetDayDate.dateStr : selectedDayFilter;
 
   // Filtered slots for calendar
-  // When searching: search across ALL booked slots (passados, presentes e futuros)
+  // When searching: search across ALL booked slots (passados, presentes e futuros) of this agency
   const filteredSlots = useMemo(() => {
     const isSearching = Boolean(searchTerm.trim());
     if (!isSearching) {
@@ -286,9 +294,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     }
 
     return slots.filter((slot) => {
-      if (activeAgencyId && slot.agencyId && slot.agencyId !== activeAgencyId) return false;
+      if (slot.agencyId !== activeAgencyId) return false;
       if (slot.status !== 'booked' || !slot.bookingId) return false;
       const booking = bookings.find((b) => b.id === slot.bookingId && b.status !== 'cancelled');
+      if (booking?.agencyId && booking.agencyId !== activeAgencyId) return false;
       return matchesBookingSearch(booking, searchTerm);
     });
   }, [weekVisibleSlots, effectiveDayFilter, searchTerm, slots, bookings, activeAgencyId]);
@@ -372,9 +381,10 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     return bookings
       .filter((b) => {
         if (b.status !== 'confirmed') return false;
-        if (activeAgencyId && b.agencyId && b.agencyId !== activeAgencyId) return false;
         const slot = slots.find((sl) => sl.id === b.slotId);
-        if (activeAgencyId && slot?.agencyId && slot.agencyId !== activeAgencyId) return false;
+        const bAgencyId = b.agencyId || slot?.agencyId;
+        if (bAgencyId !== activeAgencyId) return false;
+        if (slot?.agencyId && slot.agencyId !== activeAgencyId) return false;
 
         if (!isSearching) {
           const bookingDate = slot?.date || b.slotDate || '';
@@ -654,7 +664,9 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {consultants.map((c) => (
+            {consultants
+              .filter((c) => c.agencyId === activeAgencyId)
+              .map((c) => (
               <div
                 key={c.id}
                 onClick={() => openEditUserModal(c)}

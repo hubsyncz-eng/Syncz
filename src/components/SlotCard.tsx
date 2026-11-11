@@ -190,8 +190,19 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     if (!isBooked && slot.date <= todayIso) return null;
   }
 
-  if (activeRole === 'agency' && !isBooked && slot.date < todayIso) {
-    return null;
+  const activeAgencyId =
+    currentUser?.role === 'agency'
+      ? currentUser.agencyId || currentUser.id
+      : currentAgency?.id;
+
+  if (activeRole === 'agency') {
+    const slotAgencyId = slot.agencyId || booking?.agencyId;
+    if (activeAgencyId && slotAgencyId !== activeAgencyId) {
+      return null;
+    }
+    if (!isBooked && slot.date < todayIso) {
+      return null;
+    }
   }
 
   const handleCardClick = () => {

@@ -39,18 +39,17 @@ export const LoginPortal: React.FC = () => {
       <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-200">
         
         {/* Main Card */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl backdrop-blur-sm relative overflow-hidden">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl backdrop-blur-xl relative overflow-hidden">
           
           {/* Subtle gradient glow behind card */}
-          <div className="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
           {/* Header: Syncz and Seja bem vindo */}
           <div className="text-center mb-8 relative">
-            {/* Calendar Icon matching gradient */}
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500/15 via-blue-500/15 to-indigo-500/15 border border-cyan-500/30 mb-4 shadow-lg shadow-cyan-500/10">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-blue-500/20 to-indigo-500/20 border border-cyan-500/40 mb-4 shadow-xl shadow-cyan-500/15">
               <svg
-                className="w-7 h-7"
+                className="w-8 h-8 drop-shadow-sm"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="url(#loginPortalCalendarGrad)"
@@ -59,7 +58,7 @@ export const LoginPortal: React.FC = () => {
                 strokeLinejoin="round"
               >
                 <defs>
-                  <linearGradient id="loginPortalCalendarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <linearGradient id="loginPortalCalendarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#22d3ee" />
                     <stop offset="50%" stopColor="#60a5fa" />
                     <stop offset="100%" stopColor="#818cf8" />
@@ -67,7 +66,7 @@ export const LoginPortal: React.FC = () => {
                 </defs>
                 <path d="M8 2v4" />
                 <path d="M16 2v4" />
-                <rect width="18" height="18" x="3" y="4" rx="2" />
+                <rect width="18" height="18" x="3" y="4" rx="3" fill="rgba(34, 211, 238, 0.08)" />
                 <path d="M3 10h18" />
                 <path d="M8 14h.01" />
                 <path d="M12 14h.01" />
@@ -79,7 +78,7 @@ export const LoginPortal: React.FC = () => {
             </div>
 
             {/* Syncz Title */}
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400">
+            <h1 className="syncz-brand-title text-3xl sm:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 drop-shadow-sm">
               Syncz
             </h1>
 
@@ -155,7 +154,7 @@ export const LoginPortal: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/35 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 hover:via-blue-400 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
               >
                 <span>{isLoading ? 'Acessando...' : 'Entrar no Sistema'}</span>
                 <ArrowRight className="w-4 h-4" />

@@ -12,9 +12,15 @@ interface SingleSlotModalProps {
 export const SingleSlotModal: React.FC<SingleSlotModalProps> = ({ initialDate, onClose }) => {
   const { consultants, createSingleSlot, currentUser, currentAgency } = useRealtime();
 
+  const activeAgencyId =
+    currentUser?.role === 'agency'
+      ? currentUser.agencyId || currentUser.id
+      : currentAgency?.id || currentUser?.agencyId || 'ag_1';
+
   const [date, setDate] = useState(initialDate || formatDateToISO(new Date()));
   const [startTime, setStartTime] = useState('10:00');
-  const consultantId = consultants[0]?.id || 'c1';
+  const agencyConsultants = consultants.filter((c) => c.agencyId === activeAgencyId);
+  const consultantId = agencyConsultants[0]?.id || consultants[0]?.id || 'c1';
   const serviceCategory = 'Atendimento';
   const modality: SlotModality = 'online';
 
@@ -36,7 +42,7 @@ export const SingleSlotModal: React.FC<SingleSlotModalProps> = ({ initialDate, o
 
     try {
       await createSingleSlot({
-        agencyId: currentUser?.agencyId || currentAgency?.id || 'ag_1',
+        agencyId: activeAgencyId,
         date,
         startTime,
         endTime: computeEndTime(startTime, 60),

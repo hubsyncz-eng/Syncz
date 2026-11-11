@@ -100,9 +100,14 @@ export const BatchScheduleModal: React.FC<BatchScheduleModalProps> = ({ onClose 
     setIsSubmitting(true);
     setErrorMsg(null);
 
+    const activeAgencyId =
+      currentUser?.role === 'agency'
+        ? currentUser.agencyId || currentUser.id
+        : currentAgency?.id || currentUser?.agencyId || 'ag_1';
+
     try {
       await batchGenerateSlots({
-        agencyId: currentUser?.agencyId || currentAgency?.id || 'ag_1',
+        agencyId: activeAgencyId,
         startDate,
         endDate,
         selectedDays,

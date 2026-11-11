@@ -470,11 +470,21 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Keep currentAgency, currentPartner, and currentUser synced whenever agencies or partners arrays update
   useEffect(() => {
     if (agencies.length > 0) {
-      setCurrentAgency((prev) => {
-        if (!prev) return agencies[0];
-        const updated = agencies.find((a) => a.id === prev.id);
-        return updated || agencies[0];
-      });
+      if (currentUser?.role === 'agency') {
+        const targetAgencyId = currentUser.agencyId || currentUser.id;
+        const matchedAgency = agencies.find((a) => a.id === targetAgencyId);
+        if (matchedAgency) {
+          setCurrentAgency((prev) =>
+            prev && JSON.stringify(prev) === JSON.stringify(matchedAgency) ? prev : matchedAgency
+          );
+        }
+      } else {
+        setCurrentAgency((prev) => {
+          if (!prev) return agencies[0];
+          const updated = agencies.find((a) => a.id === prev.id);
+          return updated || agencies[0];
+        });
+      }
       setCurrentUser((prevUser) => {
         if (!prevUser || prevUser.role !== 'agency' || prevUser.isAgencyUser) return prevUser;
         const matched = agencies.find(
@@ -503,7 +513,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return updatedSession;
       });
     }
-  }, [agencies]);
+  }, [agencies, currentUser?.id, currentUser?.agencyId, currentUser?.role]);
 
   useEffect(() => {
     if (partners.length > 0) {
