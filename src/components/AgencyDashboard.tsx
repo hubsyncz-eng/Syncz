@@ -1,6 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRealtime } from '../context/RealtimeContext.tsx';
-import { TimeSlot, Booking, PartnerProfile, Consultant } from '../types/index.ts';
+import {
+  TimeSlot,
+  Booking,
+  PartnerProfile,
+  Consultant,
+  ConstrutoraEmpreendimento,
+} from '../types/index.ts';
 import {
   DAYS_OF_WEEK,
   getMonday,
@@ -8,6 +14,11 @@ import {
   formatDateToISO,
   formatNumericDate,
 } from '../utils/dateUtils.ts';
+import {
+  BRAZILIAN_STATES,
+  CITIES_BY_STATE_FALLBACK,
+  fetchCitiesByState,
+} from '../utils/brazilLocations.ts';
 import { SlotCard } from './SlotCard.tsx';
 import { PartnerRegisterModal } from './PartnerRegisterModal.tsx';
 import { PartnerView } from './PartnerView.tsx';
@@ -31,6 +42,7 @@ import {
   Search,
   Building2,
   BarChart3,
+  MapPin,
 } from 'lucide-react';
 
 interface AgencyDashboardProps {
@@ -61,6 +73,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     updateConsultant,
     deleteConsultant,
     togglePartnerAgencyAccess,
+    updatePartner,
   } = useRealtime();
 
   const activeAgencyId = useMemo(() => {
@@ -104,6 +117,257 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   const [isNewConstrutoraModalOpen, setIsNewConstrutoraModalOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<PartnerProfile | null>(null);
   const [inspectingPartner, setInspectingPartner] = useState<PartnerProfile | null>(null);
+
+  // Selected Construtora for viewing/adding Empreendimentos by city
+  const [selectedConstrutoraForEmpId, setSelectedConstrutoraForEmpId] = useState<string | null>(
+    null
+  );
+  const selectedConstrutoraForEmp = useMemo(() => {
+    if (!selectedConstrutoraForEmpId) return null;
+    return sortedConstrutoras.find((c) => c.id === selectedConstrutoraForEmpId) || null;
+  }, [sortedConstrutoras, selectedConstrutoraForEmpId]);
+
+  useEffect(() => {
+    if (agencyActiveView !== 'construtoras') {
+      setSelectedConstrutoraForEmpId(null);
+    }
+  }, [agencyActiveView]);
+
+  // Empreendimento modal state inside Agency Construtoras view
+  const [isEmpModalOpen, setIsEmpModalOpen] = useState(false);
+  const [editingEmp, setEditingEmp] = useState<ConstrutoraEmpreendimento | null>(null);
+  const [empName, setEmpName] = useState('');
+  const [empState, setEmpState] = useState('SP');
+  const [empCity, setEmpCity] = useState('');
+  const [empCitiesList, setEmpCitiesList] = useState<string[]>(
+    CITIES_BY_STATE_FALLBACK['SP'] || []
+  );
+  const [empAddress, setEmpAddress] = useState('');
+  const [empDescription, setEmpDescription] = useState('');
+  const [empSubmitting, setEmpSubmitting] = useState(false);
+  const [empDeleting, setEmpDeleting] = useState(false);
+  const [confirmEmpDelete, setConfirmEmpDelete] = useState(false);
+  const [empError, setEmpError] = useState<string | null>(null);
+
+  const formatTitleCaseWords = (value: string) => {
+    return value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(
+        (word) =>
+          word.charAt(0).toLocaleUpperCase('pt-BR') +
+          word.slice(1).toLocaleLowerCase('pt-BR')
+      )
+      .join(' ');
+  };
+
+  useEffect(() => {
+    if (!isEmpModalOpen) return;
+    let active = true;
+    const fallback = CITIES_BY_STATE_FALLBACK[empState] || [];
+    setEmpCitiesList((prev) => (prev.length > 0 ? prev : fallback));
+    if (fallback.length > 0 && !empCity) {
+      setEmpCity(fallback[0]);
+    }
+
+    fetchCitiesByState(empState).then((list) => {
+      if (!active || list.length === 0) return;
+      setEmpCitiesList(list);
+      setEmpCity((prev) => (prev && list.includes(prev) ? prev : list[0]));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [empState, isEmpModalOpen]);
+
+  const handleEmpStateChange = (newUf: string) => {
+    setEmpState(newUf);
+    const fallback = CITIES_BY_STATE_FALLBACK[newUf] || [];
+    setEmpCitiesList(fallback);
+    if (fallback.length > 0) {
+      setEmpCity(fallback[0]);
+    } else {
+      setEmpCity('');
+    }
+  };
+
+  const openNewEmpModal = (presetCity?: string, presetState?: string) => {
+    const defaultUf = presetState || activeAgency?.state || 'SP';
+    const defaultCities = CITIES_BY_STATE_FALLBACK[defaultUf] || ['São Paulo'];
+    const targetCity =
+      presetCity ||
+      (defaultUf === activeAgency?.state && activeAgency?.city
+        ? activeAgency.city
+        : defaultCities[0] || '');
+    setEditingEmp(null);
+    setEmpName('');
+    setEmpState(defaultUf);
+    setEmpCitiesList(
+      targetCity && !defaultCities.includes(targetCity)
+        ? [targetCity, ...defaultCities]
+        : defaultCities
+    );
+    setEmpCity(targetCity);
+    setEmpAddress('');
+    setEmpDescription('');
+    setConfirmEmpDelete(false);
+    setEmpError(null);
+    setIsEmpModalOpen(true);
+  };
+
+  const openEditEmpModal = (emp: ConstrutoraEmpreendimento) => {
+    const initialUf = emp.state || activeAgency?.state || 'SP';
+    const fallbackCities = CITIES_BY_STATE_FALLBACK[initialUf] || [];
+    setEditingEmp(emp);
+    setEmpName(emp.name || '');
+    setEmpState(initialUf);
+    setEmpCitiesList(
+      emp.city && !fallbackCities.includes(emp.city)
+        ? [emp.city, ...fallbackCities]
+        : fallbackCities
+    );
+    setEmpCity(emp.city || fallbackCities[0] || '');
+    setEmpAddress(emp.address || '');
+    setEmpDescription(emp.description || '');
+    setConfirmEmpDelete(false);
+    setEmpError(null);
+    setIsEmpModalOpen(true);
+  };
+
+  const handleSaveEmp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedConstrutoraForEmp) return;
+    if (!empName.trim()) {
+      setEmpError('Por favor informe o nome do empreendimento.');
+      return;
+    }
+
+    setEmpSubmitting(true);
+    setEmpError(null);
+
+    const formattedName = formatTitleCaseWords(empName);
+    const formattedAddress = empAddress.trim() ? formatTitleCaseWords(empAddress) : '';
+    const formattedDescription = empDescription.trim()
+      ? formatTitleCaseWords(empDescription)
+      : '';
+
+    try {
+      const currentList = Array.isArray(selectedConstrutoraForEmp.empreendimentos)
+        ? selectedConstrutoraForEmp.empreendimentos
+        : [];
+      let nextList: ConstrutoraEmpreendimento[];
+
+      if (editingEmp) {
+        nextList = currentList.map((item) =>
+          item.id === editingEmp.id
+            ? {
+                ...item,
+                name: formattedName,
+                state: empState,
+                city: empCity,
+                address: formattedAddress,
+                description: formattedDescription,
+              }
+            : item
+        );
+      } else {
+        const newEmp: ConstrutoraEmpreendimento = {
+          id: `emp_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          name: formattedName,
+          state: empState,
+          city: empCity,
+          address: formattedAddress,
+          description: formattedDescription,
+          createdAt: new Date().toISOString(),
+        };
+        nextList = [...currentList, newEmp];
+      }
+
+      await updatePartner(selectedConstrutoraForEmp.id, {
+        ...selectedConstrutoraForEmp,
+        empreendimentos: nextList,
+      });
+      setIsEmpModalOpen(false);
+    } catch (err: any) {
+      setEmpError(err.message || 'Erro ao salvar empreendimento.');
+    } finally {
+      setEmpSubmitting(false);
+    }
+  };
+
+  const handleDeleteEmp = async () => {
+    if (!selectedConstrutoraForEmp || !editingEmp) return;
+    if (!confirmEmpDelete) {
+      setConfirmEmpDelete(true);
+      return;
+    }
+
+    setEmpDeleting(true);
+    setEmpError(null);
+    try {
+      const currentList = Array.isArray(selectedConstrutoraForEmp.empreendimentos)
+        ? selectedConstrutoraForEmp.empreendimentos
+        : [];
+      const nextList = currentList.filter((item) => item.id !== editingEmp.id);
+      await updatePartner(selectedConstrutoraForEmp.id, {
+        ...selectedConstrutoraForEmp,
+        empreendimentos: nextList,
+      });
+      setIsEmpModalOpen(false);
+      setEditingEmp(null);
+      setConfirmEmpDelete(false);
+    } catch (err: any) {
+      setEmpError(err.message || 'Erro ao excluir empreendimento.');
+    } finally {
+      setEmpDeleting(false);
+    }
+  };
+
+  const selectedConstrutoraEmpByCity = useMemo(() => {
+    if (!selectedConstrutoraForEmp) return [];
+    const list = Array.isArray(selectedConstrutoraForEmp.empreendimentos)
+      ? selectedConstrutoraForEmp.empreendimentos
+      : [];
+    const groups = new Map<
+      string,
+      {
+        cityLabel: string;
+        city: string;
+        state: string;
+        items: ConstrutoraEmpreendimento[];
+      }
+    >();
+
+    list.forEach((emp) => {
+      const cityClean = (emp.city || '').trim();
+      const stateClean = (emp.state || '').trim();
+      const cityLabel = cityClean
+        ? `${cityClean}${stateClean ? ` - ${stateClean}` : ''}`
+        : stateClean || 'Cidade não informada';
+      const key = cityLabel.toLowerCase();
+      const existing = groups.get(key) || {
+        cityLabel,
+        city: cityClean,
+        state: stateClean,
+        items: [],
+      };
+      existing.items.push(emp);
+      groups.set(key, existing);
+    });
+
+    return Array.from(groups.values())
+      .map((g) => ({
+        ...g,
+        items: [...g.items].sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+        ),
+      }))
+      .sort((a, b) =>
+        a.cityLabel.localeCompare(b.cityLabel, 'pt-BR', { sensitivity: 'base' })
+      );
+  }, [selectedConstrutoraForEmp]);
 
   // User (Consultant) creation / editing modal state
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -536,98 +800,400 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         </div>
       ) : !currentUser?.isAgencyUser && agencyActiveView === 'construtoras' ? (
         <div className="space-y-6">
-          <div className="flex flex-col gap-3.5 pt-1">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Construtoras
-              </h2>
-              <p className="text-sm text-slate-400 mt-1 w-full leading-relaxed">
-                Gerencie as construtoras cadastradas no ecossistema da agência.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setAgencyActiveView('schedule')}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar para Agenda
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsNewConstrutoraModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/25 transition-all cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                Nova Construtora
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            {sortedConstrutoras.map((construtora) => {
-              const isAllowed =
-                Array.isArray(construtora.allowedAgencyIds) &&
-                construtora.allowedAgencyIds.includes(activeAgencyId);
-
-              return (
-                <div
-                  key={construtora.id}
-                  onClick={() => setEditingPartner(construtora)}
-                  className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <input
-                      type="checkbox"
-                      checked={isAllowed}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={() => togglePartnerAgencyAccess(construtora.id, activeAgencyId)}
-                      title={
-                        isAllowed
-                          ? 'Construtora habilitada para visualizar a agenda desta agência'
-                          : 'Marque para permitir que esta construtora visualize a agenda desta agência'
-                      }
-                      className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
-                    />
-                    <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
-                      {construtora.logoUrl?.trim() ? (
-                        <img
-                          src={construtora.logoUrl.trim()}
-                          alt={construtora.name}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <Building2 className="w-4 h-4 text-amber-400" />
-                      )}
-                    </div>
-                    <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
-                      {construtora.name}
-                    </h4>
+          {selectedConstrutoraForEmp ? (
+            <>
+              <div className="flex flex-col gap-3.5 pt-1">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+                    {selectedConstrutoraForEmp.logoUrl?.trim() ? (
+                      <img
+                        src={selectedConstrutoraForEmp.logoUrl.trim()}
+                        alt={selectedConstrutoraForEmp.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Building2 className="w-5 h-5 text-amber-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                      {selectedConstrutoraForEmp.name}
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-0.5 w-full leading-relaxed">
+                      Lista de empreendimentos da construtora organizados por cidade.
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
-          {isNewConstrutoraModalOpen && (
-            <PartnerRegisterModal
-              initialSegment="Construtora"
-              onClose={() => setIsNewConstrutoraModalOpen(false)}
-            />
-          )}
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedConstrutoraForEmpId(null)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar para Construtoras
+                  </button>
 
-          {editingPartner && (
-            <PartnerRegisterModal
-              partnerToEdit={editingPartner}
-              onClose={() => setEditingPartner(null)}
-            />
+                  <button
+                    type="button"
+                    onClick={() => openNewEmpModal()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/25 transition-all cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    Incluir Empreendimento
+                  </button>
+                </div>
+              </div>
+
+              {selectedConstrutoraEmpByCity.length === 0 ? (
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center">
+                  <Building2 className="w-9 h-9 text-amber-400 mx-auto mb-2.5 opacity-80" />
+                  <h4 className="text-sm sm:text-base font-bold text-white">
+                    Nenhum empreendimento cadastrado
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                    Clique em &ldquo;Incluir Empreendimento&rdquo; para cadastrar os empreendimentos desta construtora por cidade.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {selectedConstrutoraEmpByCity.map((cityGroup) => (
+                    <div
+                      key={cityGroup.cityLabel}
+                      className="bg-slate-900/50 border border-slate-800/90 rounded-2xl p-4 sm:p-5 space-y-3"
+                    >
+                      <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                            <MapPin className="w-4 h-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
+                              {cityGroup.cityLabel}
+                            </h3>
+                            <span className="text-[11px] text-slate-400">
+                              {cityGroup.items.length}{' '}
+                              {cityGroup.items.length === 1
+                                ? 'empreendimento cadastrado'
+                                : 'empreendimentos cadastrados'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => openNewEmpModal(cityGroup.city, cityGroup.state)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" />
+                          Incluir nesta cidade
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {cityGroup.items.map((emp) => (
+                          <div
+                            key={emp.id}
+                            onClick={() => openEditEmpModal(emp)}
+                            className="bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 rounded-xl px-4 py-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer group"
+                          >
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-white text-sm sm:text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
+                                {emp.name}
+                              </h4>
+                              {(emp.address || emp.description) && (
+                                <p className="text-xs text-slate-400 mt-0.5 truncate">
+                                  {[emp.address, emp.description].filter(Boolean).join(' • ')}
+                                </p>
+                              )}
+                            </div>
+                            <Edit3 className="w-4 h-4 text-slate-500 group-hover:text-amber-400 shrink-0 transition-colors" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isEmpModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in">
+                  <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-lg w-full p-6 sm:p-7 text-white shadow-2xl relative my-auto">
+                    <button
+                      type="button"
+                      onClick={() => setIsEmpModalOpen(false)}
+                      disabled={empSubmitting || empDeleting}
+                      className="absolute top-5 right-5 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex items-center gap-3 pr-8 pb-4 border-b border-slate-800">
+                      <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <Building2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-white tracking-tight">
+                          {editingEmp ? 'Editar Empreendimento' : 'Incluir Empreendimento'}
+                        </h2>
+                        <p className="text-xs text-slate-400">
+                          {selectedConstrutoraForEmp.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSaveEmp} className="mt-4 space-y-3.5 text-xs sm:text-sm">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Nome do Empreendimento *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={empName}
+                          onChange={(e) => setEmpName(e.target.value)}
+                          placeholder="Ex: Residencial Parque Das Águas"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            Estado (UF)
+                          </label>
+                          <select
+                            value={empState}
+                            onChange={(e) => handleEmpStateChange(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                          >
+                            {BRAZILIAN_STATES.map((st) => (
+                              <option key={st.uf} value={st.uf}>
+                                {st.uf} - {st.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-300 mb-1">
+                            Cidade
+                          </label>
+                          <select
+                            value={empCity}
+                            onChange={(e) => setEmpCity(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                          >
+                            {empCitiesList.map((cityName) => (
+                              <option key={cityName} value={cityName}>
+                                {cityName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Endereço / Localização
+                        </label>
+                        <input
+                          type="text"
+                          value={empAddress}
+                          onChange={(e) => setEmpAddress(e.target.value)}
+                          placeholder="Ex: Setor Noroeste, Quadra 10"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          Observações / Descrição
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={empDescription}
+                          onChange={(e) => setEmpDescription(e.target.value)}
+                          placeholder="Informações adicionais sobre o empreendimento..."
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 text-xs sm:text-sm resize-none"
+                        />
+                      </div>
+
+                      {empError && (
+                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                          {empError}
+                        </div>
+                      )}
+
+                      <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+                        {editingEmp ? (
+                          <button
+                            type="button"
+                            disabled={empSubmitting || empDeleting}
+                            onClick={handleDeleteEmp}
+                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 ${
+                              confirmEmpDelete
+                                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30'
+                                : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30'
+                            }`}
+                          >
+                            {empDeleting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Excluindo...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="w-4 h-4" />
+                                {confirmEmpDelete ? 'Confirmar Exclusão' : 'Excluir Cadastro'}
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={empSubmitting || empDeleting}
+                            onClick={() => setIsEmpModalOpen(false)}
+                            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={empSubmitting || empDeleting}
+                          className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/30 cursor-pointer disabled:opacity-50"
+                        >
+                          {empSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-4 h-4" />
+                              {editingEmp ? 'Salvar Alterações' : 'Cadastrar Empreendimento'}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3.5 pt-1">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                    Construtoras
+                  </h2>
+                  <p className="text-sm text-slate-400 mt-1 w-full leading-relaxed">
+                    Clique em uma construtora para visualizar e incluir seus empreendimentos por cidade.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAgencyActiveView('schedule')}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs sm:text-sm transition-all cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar para Agenda
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsNewConstrutoraModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/25 transition-all cursor-pointer"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    Nova Construtora
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                {sortedConstrutoras.map((construtora) => {
+                  const isAllowed =
+                    Array.isArray(construtora.allowedAgencyIds) &&
+                    construtora.allowedAgencyIds.includes(activeAgencyId);
+                  const empCount = Array.isArray(construtora.empreendimentos)
+                    ? construtora.empreendimentos.length
+                    : 0;
+
+                  return (
+                    <div
+                      key={construtora.id}
+                      onClick={() => setSelectedConstrutoraForEmpId(construtora.id)}
+                      className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isAllowed}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => togglePartnerAgencyAccess(construtora.id, activeAgencyId)}
+                          title={
+                            isAllowed
+                              ? 'Construtora habilitada para visualizar a agenda desta agência'
+                              : 'Marque para permitir que esta construtora visualize a agenda desta agência'
+                          }
+                          className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
+                        />
+                        <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+                          {construtora.logoUrl?.trim() ? (
+                            <img
+                              src={construtora.logoUrl.trim()}
+                              alt={construtora.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <Building2 className="w-4 h-4 text-amber-400" />
+                          )}
+                        </div>
+                        <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
+                          {construtora.name}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 group-hover:border-amber-500/30 group-hover:text-amber-300 transition-colors">
+                          {empCount} {empCount === 1 ? 'empreendimento' : 'empreendimentos'}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {isNewConstrutoraModalOpen && (
+                <PartnerRegisterModal
+                  initialSegment="Construtora"
+                  onClose={() => setIsNewConstrutoraModalOpen(false)}
+                />
+              )}
+
+              {editingPartner && (
+                <PartnerRegisterModal
+                  partnerToEdit={editingPartner}
+                  onClose={() => setEditingPartner(null)}
+                />
+              )}
+            </>
           )}
         </div>
       ) : !currentUser?.isAgencyUser && agencyActiveView === 'users' ? (
