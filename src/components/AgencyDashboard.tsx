@@ -286,6 +286,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
           city: empCity,
           address: formattedAddress,
           description: formattedDescription,
+          allowedAgencyIds: [activeAgencyId],
           createdAt: new Date().toISOString(),
         };
         nextList = [...currentList, newEmp];
@@ -301,6 +302,32 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     } finally {
       setEmpSubmitting(false);
     }
+  };
+
+  const toggleEmpreendimentoAgencyAccess = async (empId: string) => {
+    if (!selectedConstrutoraForEmp) return;
+    const currentList = Array.isArray(selectedConstrutoraForEmp.empreendimentos)
+      ? selectedConstrutoraForEmp.empreendimentos
+      : [];
+    const nextList = currentList.map((item) => {
+      if (item.id !== empId) return item;
+      const currentAllowed = Array.isArray(item.allowedAgencyIds)
+        ? item.allowedAgencyIds
+        : [];
+      const isCurrentlyAllowed = currentAllowed.includes(activeAgencyId);
+      const nextAllowed = isCurrentlyAllowed
+        ? currentAllowed.filter((id) => id !== activeAgencyId)
+        : [...currentAllowed, activeAgencyId];
+      return {
+        ...item,
+        allowedAgencyIds: nextAllowed,
+      };
+    });
+
+    await updatePartner(selectedConstrutoraForEmp.id, {
+      ...selectedConstrutoraForEmp,
+      empreendimentos: nextList,
+    });
   };
 
   const handleDeleteEmp = async () => {
@@ -1001,25 +1028,45 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        {cityGroup.items.map((emp) => (
-                          <div
-                            key={emp.id}
-                            onClick={() => openEditEmpModal(emp)}
-                            className="bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 rounded-xl px-4 py-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer group"
-                          >
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-white text-sm sm:text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
-                                {emp.name}
-                              </h4>
-                              {(emp.address || emp.description) && (
-                                <p className="text-xs text-slate-400 mt-0.5 truncate">
-                                  {[emp.address, emp.description].filter(Boolean).join(' • ')}
-                                </p>
-                              )}
+                        {cityGroup.items.map((emp) => {
+                          const isEmpAllowed =
+                            Array.isArray(emp.allowedAgencyIds) &&
+                            emp.allowedAgencyIds.includes(activeAgencyId);
+
+                          return (
+                            <div
+                              key={emp.id}
+                              onClick={() => openEditEmpModal(emp)}
+                              className="bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 rounded-xl px-4 py-3.5 flex items-center justify-between gap-3 transition-all cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={isEmpAllowed}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={() => toggleEmpreendimentoAgencyAccess(emp.id)}
+                                  title={
+                                    isEmpAllowed
+                                      ? 'Empreendimento vinculado à agenda desta agência'
+                                      : 'Marque para vincular este empreendimento à agenda desta agência'
+                                  }
+                                  className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-white text-sm sm:text-base leading-snug truncate group-hover:text-amber-300 transition-colors">
+                                    {emp.name}
+                                  </h4>
+                                  {(emp.address || emp.description) && (
+                                    <p className="text-xs text-slate-400 mt-0.5 truncate">
+                                      {[emp.address, emp.description].filter(Boolean).join(' • ')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Edit3 className="w-4 h-4 text-slate-500 group-hover:text-amber-400 shrink-0 transition-colors" />
                             </div>
-                            <Edit3 className="w-4 h-4 text-slate-500 group-hover:text-amber-400 shrink-0 transition-colors" />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ))}

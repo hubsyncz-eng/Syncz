@@ -119,6 +119,7 @@ export interface ConstrutoraEmpreendimento {
   city?: string;
   address?: string;
   description?: string;
+  allowedAgencyIds?: string[];
   createdAt?: string;
 }
 

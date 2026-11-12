@@ -137,13 +137,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [selectedConstrutoraId, setSelectedConstrutoraId] = useState<string>(initialConstrutoraId);
   const selectedConstrutoraFromList = construtorasList.find((c) => c.id === selectedConstrutoraId);
 
+  const targetAgencyId = slot.agencyId || existingBooking?.agencyId || '';
+
   const empreendimentosList = React.useMemo(() => {
     const raw = selectedConstrutoraFromList?.empreendimentos;
     if (!Array.isArray(raw)) return [];
-    return [...raw].sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
-    );
-  }, [selectedConstrutoraFromList]);
+    return [...raw]
+      .filter((emp) => {
+        if (
+          existingBooking &&
+          (emp.id === existingBooking.empreendimentoId ||
+            emp.name === existingBooking.empreendimentoName)
+        ) {
+          return true;
+        }
+        if (!targetAgencyId) return true;
+        const allowed = Array.isArray(emp.allowedAgencyIds) ? emp.allowedAgencyIds : [];
+        return allowed.includes(targetAgencyId);
+      })
+      .sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', 'pt-BR', { sensitivity: 'base' })
+      );
+  }, [selectedConstrutoraFromList, targetAgencyId, existingBooking]);
 
   const initialEmpreendimentoId = existingBooking
     ? empreendimentosList.find(
