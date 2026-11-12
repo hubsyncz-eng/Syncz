@@ -60,6 +60,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const regularPartners = partners.filter((p) => p.segment?.toLowerCase() !== 'construtora');
   const construtoras = partners.filter((p) => p.segment?.toLowerCase() === 'construtora');
+  const totalEmpreendimentos = construtoras.reduce(
+    (acc, c) => acc + (Array.isArray(c.empreendimentos) ? c.empreendimentos.length : 0),
+    0
+  );
 
   // Switch to agency perspective
   const handleInspectAgency = (agency: Agency) => {
@@ -124,7 +128,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <div className="absolute right-0 top-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Global Ecosystem Metrics */}
-            <div className="relative z-10 grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800">
                 <div className="text-xs text-slate-400 flex items-center justify-between">
                   <span>Agências Cadastradas</span>
@@ -150,6 +154,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <div className="text-xl sm:text-2xl font-bold text-amber-400 mt-1">{construtoras.length}</div>
                 <div className="text-[11px] text-slate-400 mt-0.5">Acesso visualização</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800">
+                <div className="text-xs text-slate-400 flex items-center justify-between">
+                  <span>Empreendimentos</span>
+                  <Layers className="w-4 h-4 text-orange-400" />
+                </div>
+                <div className="text-xl sm:text-2xl font-bold text-orange-400 mt-1">
+                  {totalEmpreendimentos}
+                </div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Cadastrados na rede</div>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800">

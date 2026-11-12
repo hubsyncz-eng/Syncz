@@ -585,6 +585,29 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    const getSessionActorLabel = (
+      session: UserSession,
+      agenciesList: Agency[] = latestAgencies
+    ): string => {
+      if (session.role === 'admin') {
+        return session.name || 'Master';
+      }
+      if (session.role === 'agency') {
+        if (session.isAgencyUser) {
+          const ag = agenciesList.find((a) => a.id === session.agencyId);
+          return ag ? `${session.name} (${ag.name})` : session.name;
+        }
+        return session.name || 'Agência';
+      }
+      if (session.role === 'partner') {
+        return session.name || 'Parceiro';
+      }
+      if (session.role === 'construtora') {
+        return session.name || 'Construtora';
+      }
+      return session.name || 'Usuário';
+    };
+
     // 2. Authenticate against definitive Firestore data first
     try {
       const session = authenticateLocally(
@@ -596,6 +619,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         latestPartners
       );
       login(session);
+      await recordAuditActivity('user_login', 'Acessou o sistema', {
+        actorName: getSessionActorLabel(session, latestAgencies),
+      });
       addToast({
         type: 'success',
         title: 'Acesso Autorizado',
@@ -613,6 +639,9 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (apiRes.isApiAvailable && apiRes.ok && apiRes.data?.success && apiRes.data?.session) {
         const session: UserSession = apiRes.data.session;
         login(session);
+        await recordAuditActivity('user_login', 'Acessou o sistema', {
+          actorName: getSessionActorLabel(session, latestAgencies),
+        });
         addToast({
           type: 'success',
           title: 'Acesso Autorizado',
@@ -937,13 +966,14 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     type: ActivityEvent['type'],
     actionText: string,
     extra?: {
+      actorName?: string;
       partnerName?: string;
       agencyName?: string;
       slotTime?: string;
       protocol?: string;
     }
   ) => {
-    const actorName = getActorLabel();
+    const actorName = extra?.actorName || getActorLabel();
     const act: ActivityEvent = {
       id: `act_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       type,

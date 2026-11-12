@@ -160,7 +160,8 @@ export interface ActivityEvent {
     | 'agency_deleted'
     | 'consultant_registered'
     | 'consultant_updated'
-    | 'consultant_deleted';
+    | 'consultant_deleted'
+    | 'user_login';
   timestamp: string;
   actorName?: string;
   actionText?: string;
