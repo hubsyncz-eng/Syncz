@@ -73,6 +73,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
     updateConsultant,
     deleteConsultant,
     togglePartnerAgencyAccess,
+    togglePartnerConstrutoraAccess,
     updatePartner,
   } = useRealtime();
 
@@ -118,10 +119,14 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   const [editingPartner, setEditingPartner] = useState<PartnerProfile | null>(null);
   const [inspectingPartner, setInspectingPartner] = useState<PartnerProfile | null>(null);
 
-  // Selected Construtora for viewing/adding Empreendimentos by city
+  // Selected Construtora for viewing/adding Empreendimentos by city or linking Partners
   const [selectedConstrutoraForEmpId, setSelectedConstrutoraForEmpId] = useState<string | null>(
     null
   );
+  const [construtoraDetailTab, setConstrutoraDetailTab] = useState<
+    'empreendimentos' | 'parceiros'
+  >('empreendimentos');
+
   const selectedConstrutoraForEmp = useMemo(() => {
     if (!selectedConstrutoraForEmpId) return null;
     return sortedConstrutoras.find((c) => c.id === selectedConstrutoraForEmpId) || null;
@@ -130,6 +135,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   useEffect(() => {
     if (agencyActiveView !== 'construtoras') {
       setSelectedConstrutoraForEmpId(null);
+      setConstrutoraDetailTab('empreendimentos');
     }
   }, [agencyActiveView]);
 
@@ -824,12 +830,14 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                       {selectedConstrutoraForEmp.name}
                     </h2>
                     <p className="text-sm text-slate-400 mt-0.5 w-full leading-relaxed">
-                      Lista de empreendimentos da construtora organizados por cidade.
+                      {construtoraDetailTab === 'parceiros'
+                        ? 'Gerencie os parceiros vinculados a esta construtora dentre os parceiros cadastrados.'
+                        : 'Lista de empreendimentos da construtora organizados por cidade.'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => setSelectedConstrutoraForEmpId(null)}
@@ -841,7 +849,48 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => openNewEmpModal()}
+                    onClick={() => setConstrutoraDetailTab('empreendimentos')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm border transition-all cursor-pointer ${
+                      construtoraDetailTab === 'empreendimentos'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4 text-amber-400" />
+                    Empreendimentos (
+                    {Array.isArray(selectedConstrutoraForEmp.empreendimentos)
+                      ? selectedConstrutoraForEmp.empreendimentos.length
+                      : 0}
+                    )
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConstrutoraDetailTab('parceiros')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm border transition-all cursor-pointer ${
+                      construtoraDetailTab === 'parceiros'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+                    }`}
+                  >
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    Parceiros Vinculados (
+                    {
+                      sortedPartners.filter(
+                        (p) =>
+                          Array.isArray(p.allowedConstrutoraIds) &&
+                          p.allowedConstrutoraIds.includes(selectedConstrutoraForEmp.id)
+                      ).length
+                    }
+                    )
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConstrutoraDetailTab('empreendimentos');
+                      openNewEmpModal();
+                    }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-amber-600/25 transition-all cursor-pointer"
                   >
                     <PlusCircle className="w-4 h-4" />
@@ -850,7 +899,63 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                 </div>
               </div>
 
-              {selectedConstrutoraEmpByCity.length === 0 ? (
+              {construtoraDetailTab === 'parceiros' ? (
+                <div className="flex flex-col gap-2.5">
+                  {sortedPartners.length === 0 ? (
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center">
+                      <Users className="w-9 h-9 text-emerald-400 mx-auto mb-2.5 opacity-80" />
+                      <h4 className="text-sm sm:text-base font-bold text-white">
+                        Nenhum parceiro negocial cadastrado
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                        Cadastre parceiros na aba de Parceiros para vinculá-los a esta construtora.
+                      </p>
+                    </div>
+                  ) : (
+                    sortedPartners.map((partner) => {
+                      const isAllowed =
+                        Array.isArray(partner.allowedConstrutoraIds) &&
+                        partner.allowedConstrutoraIds.includes(selectedConstrutoraForEmp.id);
+
+                      return (
+                        <div
+                          key={partner.id}
+                          onClick={() =>
+                            togglePartnerConstrutoraAccess(
+                              partner.id,
+                              selectedConstrutoraForEmp.id
+                            )
+                          }
+                          className="bg-slate-900/90 border border-slate-800 hover:border-emerald-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isAllowed}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() =>
+                                togglePartnerConstrutoraAccess(
+                                  partner.id,
+                                  selectedConstrutoraForEmp.id
+                                )
+                              }
+                              title={
+                                isAllowed
+                                  ? 'Parceiro habilitado para esta construtora'
+                                  : 'Marque para permitir que este parceiro selecione esta construtora nos agendamentos'
+                              }
+                              className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer accent-cyan-500 shrink-0"
+                            />
+                            <h4 className="font-bold text-white text-base leading-snug truncate group-hover:text-emerald-300 transition-colors">
+                              {partner.name}
+                            </h4>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : selectedConstrutoraEmpByCity.length === 0 ? (
                 <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center">
                   <Building2 className="w-9 h-9 text-amber-400 mx-auto mb-2.5 opacity-80" />
                   <h4 className="text-sm sm:text-base font-bold text-white">
@@ -1129,12 +1234,20 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                   const empCount = Array.isArray(construtora.empreendimentos)
                     ? construtora.empreendimentos.length
                     : 0;
+                  const linkedPartnersCount = sortedPartners.filter(
+                    (p) =>
+                      Array.isArray(p.allowedConstrutoraIds) &&
+                      p.allowedConstrutoraIds.includes(construtora.id)
+                  ).length;
 
                   return (
                     <div
                       key={construtora.id}
-                      onClick={() => setSelectedConstrutoraForEmpId(construtora.id)}
-                      className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
+                      onClick={() => {
+                        setSelectedConstrutoraForEmpId(construtora.id);
+                        setConstrutoraDetailTab('empreendimentos');
+                      }}
+                      className="bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md transition-all cursor-pointer group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <input
@@ -1169,11 +1282,41 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 group-hover:border-amber-500/30 group-hover:text-amber-300 transition-colors">
-                          {empCount} {empCount === 1 ? 'empreendimento' : 'empreendimentos'}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedConstrutoraForEmpId(construtora.id);
+                            setConstrutoraDetailTab('parceiros');
+                          }}
+                          title="Vincular parceiros cadastrados a esta construtora"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-500/15 border border-slate-800 hover:border-emerald-500/40 text-xs font-semibold text-slate-300 hover:text-emerald-300 transition-colors cursor-pointer"
+                        >
+                          <Users className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>
+                            {linkedPartnersCount}{' '}
+                            {linkedPartnersCount === 1 ? 'parceiro' : 'parceiros'}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedConstrutoraForEmpId(construtora.id);
+                            setConstrutoraDetailTab('empreendimentos');
+                          }}
+                          title="Visualizar e incluir empreendimentos desta construtora"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-amber-500/15 border border-slate-800 hover:border-amber-500/40 text-xs font-semibold text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
+                        >
+                          <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>
+                            {empCount} {empCount === 1 ? 'empreendimento' : 'empreendimentos'}
+                          </span>
+                        </button>
+
+                        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors hidden sm:block" />
                       </div>
                     </div>
                   );
