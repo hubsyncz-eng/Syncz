@@ -484,14 +484,24 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
 
   const handleConfirmCancel = async () => {
     if (!cancellingBookingId) return;
+    const targetBooking = bookings.find((b) => b.id === cancellingBookingId);
+    const targetSlot = targetBooking
+      ? slots.find((s) => s.id === targetBooking.slotId)
+      : undefined;
+    const bookingDateIso = targetSlot?.date || targetBooking?.slotDate || '';
+    if (bookingDateIso && bookingDateIso <= todayIso) {
+      setCancellingBookingId(null);
+      return;
+    }
     await cancelBooking(cancellingBookingId, 'Cancelado pelo parceiro negocial');
     setCancellingBookingId(null);
   };
 
   const handlePartnerBookSlot = (slot: TimeSlot, booking?: Booking) => {
     if (isConstrutora) return;
-    // Only allow new booking inclusions starting from the next day (block past days and today)
-    if (!booking && slot.date <= todayIso) {
+    const slotDateIso = slot.date || booking?.slotDate || '';
+    // Block past days and today for both new bookings and editing/deleting existing bookings by partners
+    if (slotDateIso <= todayIso) {
       return;
     }
     if (onBookSlot) onBookSlot(slot, booking);

@@ -27,6 +27,7 @@ import {
   DEFAULT_AGENCY_INFO,
   formatSeedDate,
 } from '../utils/seedData.ts';
+import { formatDateToISO } from '../utils/dateUtils.ts';
 
 interface ToastAlert {
   id: string;
@@ -1721,6 +1722,20 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   ): Promise<Booking> => {
     const existing = bookings.find((b) => b.id === id);
+    const isPartnerActor =
+      currentUser?.role === 'partner' ||
+      (currentUser?.role === 'admin' && adminPerspective === 'partner_view');
+
+    if (isPartnerActor && existing) {
+      const slotForBooking = slots.find((s) => s.id === existing.slotId);
+      const bDate = slotForBooking?.date || existing.slotDate || '';
+      const todayIso = formatDateToISO(new Date());
+      if (bDate && bDate <= todayIso) {
+        throw new Error(
+          'Agendamentos passados e do dia não podem ser editados por parceiros.'
+        );
+      }
+    }
 
     const apiRes = await safeFetchJson(`/api/bookings/${id}`, {
       method: 'PATCH',
@@ -1927,13 +1942,28 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const cancelBooking = async (bookingId: string, reason?: string): Promise<boolean> => {
     try {
+      const existingBooking = bookings.find((b) => b.id === bookingId);
+      const isPartnerActor =
+        currentUser?.role === 'partner' ||
+        (currentUser?.role === 'admin' && adminPerspective === 'partner_view');
+
+      if (isPartnerActor && existingBooking) {
+        const slotForBooking = slots.find((s) => s.id === existingBooking.slotId);
+        const bDate = slotForBooking?.date || existingBooking.slotDate || '';
+        const todayIso = formatDateToISO(new Date());
+        if (bDate && bDate <= todayIso) {
+          throw new Error(
+            'Agendamentos passados e do dia não podem ser excluídos por parceiros.'
+          );
+        }
+      }
+
       const apiRes = await safeFetchJson(`/api/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason }),
       });
 
-      const existingBooking = bookings.find((b) => b.id === bookingId);
       if (existingBooking) {
         const updatedBooking: Booking = {
           ...existingBooking,

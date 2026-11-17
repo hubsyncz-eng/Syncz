@@ -221,6 +221,15 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return;
     }
 
+    const todayIso = formatDateToISO(new Date());
+    const bookingDateIso = slot.date || existingBooking.slotDate || '';
+    if (!isAgencyActor && bookingDateIso <= todayIso) {
+      setErrorMsg(
+        'Agendamentos passados e do dia não podem ser excluídos por parceiros.'
+      );
+      return;
+    }
+
     setIsCancelling(true);
     setErrorMsg(null);
     const ok = await cancelBooking(
@@ -266,8 +275,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const todayIso = formatDateToISO(new Date());
-    if (!existingBooking && !isAgencyActor && slot.date <= todayIso) {
-      setErrorMsg('Agendamentos para parceiros só são permitidos a partir do próximo dia.');
+    const bookingDateIso = slot.date || existingBooking?.slotDate || '';
+    if (!isAgencyActor && bookingDateIso <= todayIso) {
+      setErrorMsg(
+        existingBooking
+          ? 'Agendamentos passados e do dia não podem ser editados por parceiros.'
+          : 'Agendamentos para parceiros só são permitidos a partir do próximo dia.'
+      );
       return;
     }
     if (!existingBooking && !isSlotStillAvailable) {

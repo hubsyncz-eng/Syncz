@@ -156,10 +156,13 @@ export const SlotCard: React.FC<SlotCardProps> = ({
   const isLocked = slot.status === 'locked';
 
   const todayIso = formatDateToISO(new Date());
+  const bookingDateIso = slot.date || booking?.slotDate || '';
   const isPartnerInclusionBlocked =
     (activeRole === 'partner' || activeRole === 'construtora') &&
     !isBooked &&
     slot.date <= todayIso;
+  const isPartnerEditBlocked =
+    activeRole === 'partner' && isBooked && bookingDateIso <= todayIso;
 
   const activeConstrutoraProfile = isReadOnlyConstrutora
     ? partners.find((p) => p.id === activePartnerId) || currentPartner
@@ -212,6 +215,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
       if (isPartnerInclusionBlocked) return;
       if (onBookSlot) onBookSlot(slot);
     } else if (isBooked && booking && onBookSlot) {
+      if (isPartnerEditBlocked) return;
       if (activeRole === 'agency' || isBookedByCurrentPartner) {
         onBookSlot(slot, booking);
       }
@@ -252,7 +256,9 @@ export const SlotCard: React.FC<SlotCardProps> = ({
         isReadOnlyConstrutora
           ? undefined
           : isBooked && booking
-            ? 'Clique no card para editar este agendamento'
+            ? isPartnerEditBlocked
+              ? 'Agendamentos passados e do dia não podem ser editados ou excluídos por parceiros'
+              : 'Clique no card para editar este agendamento'
             : !isBooked
               ? isPartnerInclusionBlocked
                 ? 'Agendamentos para parceiros só são permitidos a partir do próximo dia'
@@ -267,8 +273,10 @@ export const SlotCard: React.FC<SlotCardProps> = ({
               ? 'syncz-slot-available bg-slate-900/90 border-slate-700 cursor-default'
               : 'syncz-slot-available bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
           : currentOutcomeConfig
-            ? `${currentOutcomeConfig.cardClass} ${isReadOnlyConstrutora ? '!cursor-default' : ''}`
-            : isReadOnlyConstrutora
+            ? `${currentOutcomeConfig.cardClass} ${
+                isReadOnlyConstrutora || isPartnerEditBlocked ? '!cursor-default' : ''
+              }`
+            : isReadOnlyConstrutora || isPartnerEditBlocked
               ? 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 cursor-default'
               : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 hover:border-slate-500 hover:shadow-md cursor-pointer'
       }`}
