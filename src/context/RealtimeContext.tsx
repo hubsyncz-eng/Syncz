@@ -1399,6 +1399,11 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const deletePartner = async (id: string): Promise<boolean> => {
+    if (currentUser?.role !== 'admin' || adminPerspective !== 'admin_master') {
+      throw new Error(
+        'A exclusão de parceiros e construtoras é permitida somente para o Administrador Master.'
+      );
+    }
     const targetPartner = partners.find((p) => p.id === id);
     await safeFetchJson(`/api/partners/${id}`, {
       method: 'DELETE',

@@ -27,10 +27,10 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
     adminPerspective,
   } = useRealtime();
   const isEditing = Boolean(partnerToEdit);
+  const isMasterAdmin =
+    currentUser?.role === 'admin' && adminPerspective === 'admin_master';
   const allowDelete =
-    propCanDelete !== undefined
-      ? propCanDelete
-      : currentUser?.role !== 'partner' && currentUser?.role !== 'construtora';
+    isMasterAdmin && (propCanDelete !== undefined ? propCanDelete : true);
 
   const resolvedInitialSegment: 'Parceiro Negocial' | 'Construtora' = partnerToEdit
     ? partnerToEdit.segment?.toLowerCase() === 'construtora'
@@ -120,7 +120,7 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!partnerToEdit) return;
+    if (!partnerToEdit || !allowDelete) return;
     if (!confirmDelete) {
       setConfirmDelete(true);
       return;
@@ -174,11 +174,15 @@ export const PartnerRegisterModal: React.FC<PartnerRegisterModalProps> = ({
             <p className="text-xs text-slate-400">
               {isEditing
                 ? isConstrutora
-                  ? 'Altere os dados cadastrais ou exclua o cadastro da construtora'
-                  : 'Altere os dados cadastrais ou exclua o cadastro do parceiro'
+                  ? allowDelete
+                    ? 'Altere os dados cadastrais ou exclua o cadastro da construtora'
+                    : 'Altere os dados cadastrais da construtora'
+                  : allowDelete
+                    ? 'Altere os dados cadastrais ou exclua o cadastro do parceiro'
+                    : 'Altere os dados cadastrais do parceiro'
                 : isConstrutora
-                  ? 'O Administrador cadastra construtoras para visualização das agendas'
-                  : 'O Administrador cadastra empresas parceiras para visualização e agendamento'}
+                  ? 'Cadastro de construtora para visualização das agendas'
+                  : 'Cadastro de empresa parceira para visualização e agendamento'}
             </p>
           </div>
         </div>
