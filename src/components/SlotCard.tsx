@@ -20,6 +20,7 @@ import {
   RefreshCw,
   UserX,
   Check,
+  X,
 } from 'lucide-react';
 
 interface SlotCardProps {
@@ -92,6 +93,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     currentPartner,
     partners,
     agencies,
+    bookings,
     currentAgency,
     adminPerspective,
     deleteSlot,
@@ -101,6 +103,7 @@ export const SlotCard: React.FC<SlotCardProps> = ({
 
   const [isOutcomeMenuOpen, setIsOutcomeMenuOpen] = useState(false);
   const [isSegmentoMenuOpen, setIsSegmentoMenuOpen] = useState(false);
+  const [isCpfHistoryOpen, setIsCpfHistoryOpen] = useState(false);
   const [logoLoadError, setLogoLoadError] = useState(false);
   const [whatsappCopied, setWhatsappCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -227,6 +230,23 @@ export const SlotCard: React.FC<SlotCardProps> = ({
     : undefined;
 
   const OutcomeBadgeIcon = currentOutcomeConfig?.icon;
+
+  const normalizedClientCpf = (booking?.clientCpf || '').replace(/\D/g, '');
+  const matchingCpfBookings =
+    normalizedClientCpf.length >= 11
+      ? bookings
+          .filter(
+            (b) =>
+              b.status !== 'cancelled' &&
+              (b.clientCpf || '').replace(/\D/g, '') === normalizedClientCpf
+          )
+          .sort((a, b) => {
+            const dateCmp = (b.slotDate || '').localeCompare(a.slotDate || '');
+            if (dateCmp !== 0) return dateCmp;
+            return (b.slotStartTime || '').localeCompare(a.slotStartTime || '');
+          })
+      : [];
+  const cpfBookingCount = matchingCpfBookings.length;
 
   const slotAgency =
     agencies.find((a) => a.id === (booking?.agencyId || slot.agencyId)) || currentAgency;
@@ -383,13 +403,26 @@ export const SlotCard: React.FC<SlotCardProps> = ({
             {/* 1ª Coluna: Nome do Cliente e embaixo CPF */}
             <div className="flex flex-col gap-1.5 min-w-0">
               <div
-                className="syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0 truncate"
+                className="syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0"
                 title={formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
               >
                 <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
                 <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
                   {formatTitleCase(booking.clientName || booking.partnerRepresentative || 'Cliente Negocial')}
                 </span>
+                {cpfBookingCount > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsCpfHistoryOpen(true);
+                    }}
+                    title={`Este CPF possui ${cpfBookingCount} agendamentos registrados na rede. Clique para ver todos os agendamentos e agências.`}
+                    className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40 hover:border-amber-400 text-[11px] font-extrabold leading-none tabular-nums shrink-0 transition-colors cursor-pointer"
+                  >
+                    {cpfBookingCount}x
+                  </button>
+                )}
               </div>
 
               <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
@@ -679,6 +712,311 @@ export const SlotCard: React.FC<SlotCardProps> = ({
           </div>
         </div>
       ) : null}
+
+      {isCpfHistoryOpen && booking && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsCpfHistoryOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto animate-in fade-in cursor-default"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700/90 rounded-3xl max-w-4xl w-full p-5 sm:p-7 text-white shadow-2xl relative my-auto max-h-[90vh] flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center font-extrabold text-sm shrink-0 tabular-nums">
+                  {cpfBookingCount}x
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight truncate">
+                    Histórico de Agendamentos do CPF
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-bold text-white">{fullClientName}</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="font-mono text-amber-300">{booking.clientCpf}</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-slate-400">
+                      {cpfBookingCount}{' '}
+                      {cpfBookingCount === 1
+                        ? 'agendamento encontrado na rede'
+                        : 'agendamentos encontrados na rede'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCpfHistoryOpen(false);
+                }}
+                className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+                title="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cards List */}
+            <div className="mt-4 space-y-3.5 overflow-y-auto pr-1 flex-1">
+              {matchingCpfBookings.map((item) => {
+                const itemAgency = agencies.find((a) => a.id === item.agencyId);
+                const itemAgencyName = itemAgency?.name || 'Agência não identificada';
+                const itemAgencyCity = itemAgency?.city
+                  ? `${itemAgency.city}${itemAgency.state ? `/${itemAgency.state}` : ''}`
+                  : '';
+                const itemOutcomeConfig = item.outcome
+                  ? OUTCOME_OPTIONS.find((o) => o.value === item.outcome)
+                  : undefined;
+                const ItemOutcomeIcon = itemOutcomeConfig?.icon;
+
+                const itemConstrutora =
+                  item.propertyType === 'Empreendimento'
+                    ? partners.find(
+                        (p) =>
+                          p.segment?.toLowerCase() === 'construtora' &&
+                          ((item.construtoraId && p.id === item.construtoraId) ||
+                            (item.construtoraName &&
+                              p.name?.toLowerCase() === item.construtoraName.toLowerCase()))
+                      )
+                    : undefined;
+                const itemConstrutoraLogo = itemConstrutora?.logoUrl?.trim() || '';
+
+                return (
+                  <div key={item.id} className="space-y-1.5">
+                    {/* Indicação da Agência acima do card mantendo o card idêntico ao da lista */}
+                    <div className="flex items-center justify-between gap-2 px-1">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400">
+                        <Building2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>{itemAgencyName}</span>
+                        {itemAgencyCity && (
+                          <span className="text-slate-400 font-medium">
+                            ({itemAgencyCity})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Card idêntico ao da lista de agendamentos */}
+                    <div
+                      className={`syncz-slot-card rounded-2xl p-3.5 transition-all duration-200 border relative group ${
+                        itemOutcomeConfig
+                          ? `${itemOutcomeConfig.cardClass} !cursor-default`
+                          : 'syncz-slot-booked-partner bg-slate-900/90 border-slate-700 cursor-default'
+                      }`}
+                    >
+                      <div className="grid grid-cols-[1fr_auto] md:grid-cols-[minmax(215px,0.95fr)_minmax(0,1.1fr)_minmax(0,1.1fr)_auto] items-center gap-x-2 gap-y-2 md:gap-x-4 md:gap-y-0">
+                        {/* Lado esquerdo: Apenas Horário e Data, centralizado */}
+                        <div className="order-1 md:order-1 flex items-center gap-1.5 text-base font-semibold text-white min-w-0 flex-wrap">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Clock
+                              className={`syncz-booking-meta-icon w-[18px] h-[18px] shrink-0 ${
+                                item.outcome === 'Reprovado'
+                                  ? 'text-rose-400'
+                                  : item.outcome === 'Aprovado'
+                                    ? 'text-[#00a8ff]'
+                                    : item.outcome === 'Remarcar'
+                                      ? 'text-amber-400'
+                                      : item.outcome === 'Não compareceu'
+                                        ? 'text-orange-400'
+                                        : 'text-slate-400'
+                              }`}
+                            />
+                            <span className="syncz-booking-meta-text syncz-booking-time-text text-base font-extrabold text-white shrink-0">
+                              {item.slotStartTime}
+                            </span>
+                          </div>
+                          <span
+                            className={`syncz-booking-date-text text-base font-semibold truncate ${
+                              item.outcome === 'Reprovado'
+                                ? 'text-rose-400'
+                                : item.outcome === 'Aprovado'
+                                  ? 'text-[#00a8ff]'
+                                  : item.outcome === 'Remarcar'
+                                    ? 'text-amber-400'
+                                    : item.outcome === 'Não compareceu'
+                                      ? 'text-orange-400'
+                                      : 'text-slate-400'
+                            }`}
+                          >
+                            - {formatPortugueseDate(item.slotDate)}
+                          </span>
+                        </div>
+
+                        {/* Duas colunas à direita no desktop (1ª: Nome e embaixo CPF | 2ª: Parceiro e embaixo Valor) */}
+                        <div className="order-3 col-span-2 md:order-2 md:col-span-2 border-t border-slate-800/80 pt-2 md:border-t-0 md:pt-0 grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-4 text-sm min-w-0">
+                          {/* 1ª Coluna: Nome do Cliente e embaixo CPF */}
+                          <div className="flex flex-col gap-1.5 min-w-0">
+                            <div
+                              className="syncz-booking-meta-text flex items-center gap-2 text-white font-bold text-sm min-w-0"
+                              title={formatTitleCase(
+                                item.clientName || item.partnerRepresentative || 'Cliente Negocial'
+                              )}
+                            >
+                              <User className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                              <span className="syncz-booking-meta-text text-sm font-bold text-white truncate">
+                                {formatTitleCase(
+                                  item.clientName || item.partnerRepresentative || 'Cliente Negocial'
+                                )}
+                              </span>
+                              {cpfBookingCount > 1 && (
+                                <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-extrabold leading-none tabular-nums shrink-0">
+                                  {cpfBookingCount}x
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate">
+                              <CreditCard className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                              <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                                {item.clientCpf || 'Não informado'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 2ª Coluna: Parceiro e embaixo Valor */}
+                          <div className="flex flex-col gap-1.5 min-w-0">
+                            <div
+                              className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+                              title={formatTitleCase(item.partnerName)}
+                            >
+                              <Building2 className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                              <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                                {formatTitleCase(item.partnerName)}
+                              </span>
+                            </div>
+
+                            <div
+                              className="syncz-booking-meta-text flex items-center gap-2 text-white font-medium text-sm min-w-0 truncate"
+                              title={`Fidelização: R$ ${item.fidelizacaoValor || '0,00'}${
+                                item.fidelizacaoResponsavel || (item.isConstrutora ? 'Construtora' : '')
+                                  ? ` • ${item.fidelizacaoResponsavel || 'Construtora'}`
+                                  : ''
+                              }`}
+                            >
+                              <Banknote className="syncz-booking-meta-icon w-[18px] h-[18px] text-slate-400 shrink-0" />
+                              <span className="syncz-booking-meta-text text-sm font-medium text-white truncate">
+                                R$ {item.fidelizacaoValor || '0,00'}
+                                {item.fidelizacaoResponsavel || item.isConstrutora
+                                  ? ` • ${item.fidelizacaoResponsavel || 'Construtora'}`
+                                  : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ícones no canto direito: Tipo de Imóvel / Logo da Construtora, Nota, Segmento e Status */}
+                        <div className="order-2 md:order-3 flex items-center justify-end gap-1.5 shrink-0 relative">
+                          {/* Ícone de Imóvel Residencial / Individual ou Empreendimento (ou Logo da Construtora se houver) */}
+                          <span
+                            className={
+                              item.propertyType === 'Empreendimento' && itemConstrutoraLogo
+                                ? `w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 overflow-hidden shadow-sm ${
+                                    itemOutcomeConfig
+                                      ? itemOutcomeConfig.iconBtnClass
+                                      : 'bg-slate-800/80 border-slate-700'
+                                  }`
+                                : itemOutcomeConfig
+                                  ? `p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${itemOutcomeConfig.iconBtnClass}`
+                                  : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                            }
+                            title={
+                              item.propertyType === 'Empreendimento'
+                                ? [
+                                    'Empreendimento',
+                                    item.construtoraName,
+                                    item.empreendimentoName,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' • ')
+                                : 'Imóvel Individual'
+                            }
+                          >
+                            {item.propertyType === 'Empreendimento' ? (
+                              itemConstrutoraLogo ? (
+                                <img
+                                  src={itemConstrutoraLogo}
+                                  alt={item.construtoraName || 'Construtora'}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Building className="w-[18px] h-[18px] shrink-0" />
+                              )
+                            ) : (
+                              <Home className="w-[18px] h-[18px] shrink-0" />
+                            )}
+                          </span>
+
+                          {/* Ícone de Nota (quando houver nota digitada) */}
+                          {Boolean(item.partnerNotes && item.partnerNotes.trim()) && (
+                            <span
+                              className={
+                                itemOutcomeConfig
+                                  ? `p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${itemOutcomeConfig.iconBtnClass}`
+                                  : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                              }
+                              title={`Nota: ${item.partnerNotes!.trim()}`}
+                            >
+                              <FileText className="w-[18px] h-[18px] shrink-0" />
+                            </span>
+                          )}
+
+                          {/* Ícone de Segmento (Varejo / Carteira) */}
+                          {item.segmento && (
+                            <span
+                              className={
+                                itemOutcomeConfig
+                                  ? `p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${itemOutcomeConfig.iconBtnClass}`
+                                  : 'syncz-available-icon-btn p-[7px] rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700 flex items-center justify-center shrink-0'
+                              }
+                              title={`Segmento: ${item.segmento}`}
+                            >
+                              <span className="w-[18px] h-[18px] flex items-center justify-center text-[13px] font-extrabold leading-none shrink-0">
+                                {item.segmento === 'Varejo' ? 'V' : 'C'}
+                              </span>
+                            </span>
+                          )}
+
+                          {/* Ícone de Status / Parecer */}
+                          {itemOutcomeConfig && ItemOutcomeIcon && (
+                            <span
+                              className={`p-[7px] rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${itemOutcomeConfig.iconBtnClass}`}
+                              title={`Status: ${itemOutcomeConfig.label}`}
+                            >
+                              <ItemOutcomeIcon className="w-[18px] h-[18px] shrink-0" />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-4 mt-4 border-t border-slate-800 flex items-center justify-end shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCpfHistoryOpen(false);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
