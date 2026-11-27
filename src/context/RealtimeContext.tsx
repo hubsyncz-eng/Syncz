@@ -1209,13 +1209,32 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     id: string,
     data: Partial<PartnerProfile>
   ): Promise<PartnerProfile> => {
+    const existing = partners.find((p) => p.id === id);
+    if (
+      existing &&
+      Array.isArray(data.empreendimentos) &&
+      Array.isArray(existing.empreendimentos)
+    ) {
+      const nextIds = new Set(data.empreendimentos.map((e) => e.id));
+      const hasRemovedEmpreendimento = existing.empreendimentos.some(
+        (e) => !nextIds.has(e.id)
+      );
+      if (
+        hasRemovedEmpreendimento &&
+        (currentUser?.role !== 'admin' || adminPerspective !== 'admin_master')
+      ) {
+        throw new Error(
+          'A exclusão de empreendimentos só pode ser feita no Painel Master.'
+        );
+      }
+    }
+
     const apiRes = await safeFetchJson(`/api/partners/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
 
-    const existing = partners.find((p) => p.id === id);
     let updatedPartner: PartnerProfile;
 
     if (apiRes.isApiAvailable && apiRes.ok && apiRes.data) {

@@ -23,6 +23,8 @@ import {
   X,
   BarChart3,
   MapPin,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 
 type ExpandedMasterCard =
@@ -146,6 +148,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setCurrentPartner,
     adminPerspective: viewPerspective,
     setAdminPerspective: setViewPerspective,
+    updatePartner,
   } = useRealtime();
 
   const [activeTab, setActiveTab] = useState<'agencies' | 'partners' | 'construtoras' | 'audit'>('agencies');
@@ -153,6 +156,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [empreendimentoSearch, setEmpreendimentoSearch] = useState('');
   const [editingPartner, setEditingPartner] = useState<PartnerProfile | null>(null);
   const [editingAgency, setEditingAgency] = useState<Agency | null>(null);
+  const [confirmDeleteEmpKey, setConfirmDeleteEmpKey] = useState<string | null>(null);
+  const [deletingEmpKey, setDeletingEmpKey] = useState<string | null>(null);
+
+  const handleDeleteEmpreendimentoMaster = async (
+    construtora: PartnerProfile,
+    empId: string
+  ) => {
+    const key = `${construtora.id}:${empId}`;
+    if (confirmDeleteEmpKey !== key) {
+      setConfirmDeleteEmpKey(key);
+      return;
+    }
+
+    setDeletingEmpKey(key);
+    try {
+      const currentEmps = Array.isArray(construtora.empreendimentos)
+        ? construtora.empreendimentos
+        : [];
+      const nextEmps = currentEmps.filter((e) => e.id !== empId);
+      await updatePartner(construtora.id, {
+        ...construtora,
+        empreendimentos: nextEmps,
+      });
+      setConfirmDeleteEmpKey(null);
+    } finally {
+      setDeletingEmpKey(null);
+    }
+  };
 
   const regularPartners = useMemo(
     () => partners.filter((p) => p.segment?.toLowerCase() !== 'construtora'),
@@ -236,6 +267,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           return {
             id: emp.id,
+            isRegistered: true,
             name: emp.name,
             city: emp.city || 'Não informada',
             uf: emp.state || '',
@@ -248,6 +280,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         if (unmatchedBookings.length > 0) {
           empRows.push({
             id: `${construtora.id}-unassigned`,
+            isRegistered: false,
             name: 'Empreendimento não especificado / outros',
             city: '-',
             uf: '',
@@ -649,84 +682,135 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     <th className="py-2.5 px-3 text-right text-orange-300">Não Compareceu (Qtd / %)</th>
                                     <th className="py-2.5 px-3 text-right text-slate-300">Pendente (Qtd / %)</th>
                                     <th className="py-2.5 px-4 text-right">Taxa Aprovação (Avaliados)</th>
+                                    <th className="py-2.5 px-4 text-right">Ações Master</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/60 text-xs tabular-nums">
-                                  {empreendimentoRows.map((row) => (
-                                    <tr
-                                      key={row.id}
-                                      className="hover:bg-slate-900/40 transition-colors"
-                                    >
-                                      <td className="py-3 px-4 font-semibold text-white">
-                                        {row.name}
-                                      </td>
-                                      <td className="py-3 px-3 text-slate-400 whitespace-nowrap">
-                                        <span className="inline-flex items-center gap-1">
-                                          <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                                          {row.city}
-                                          {row.uf ? `/${row.uf}` : ''}
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-right font-bold text-white">
-                                        {row.stats.total}
-                                      </td>
-                                      <td className="py-3 px-3 text-right">
-                                        <span className="font-semibold text-emerald-400">
-                                          {row.stats.aprovados}
-                                        </span>{' '}
-                                        <span className="text-slate-400">
-                                          ({row.stats.aprovadosPct}%)
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-right">
-                                        <span className="font-semibold text-rose-400">
-                                          {row.stats.reprovados}
-                                        </span>{' '}
-                                        <span className="text-slate-400">
-                                          ({row.stats.reprovadosPct}%)
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-right">
-                                        <span className="font-semibold text-amber-300">
-                                          {row.stats.remarcar}
-                                        </span>{' '}
-                                        <span className="text-slate-400">
-                                          ({row.stats.remarcarPct}%)
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-right">
-                                        <span className="font-semibold text-orange-300">
-                                          {row.stats.naoCompareceu}
-                                        </span>{' '}
-                                        <span className="text-slate-400">
-                                          ({row.stats.naoCompareceuPct}%)
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-3 text-right">
-                                        <span className="font-semibold text-slate-300">
-                                          {row.stats.pendentes}
-                                        </span>{' '}
-                                        <span className="text-slate-500">
-                                          ({row.stats.pendentesPct}%)
-                                        </span>
-                                      </td>
-                                      <td className="py-3 px-4 text-right">
-                                        {row.stats.totalAvaliados > 0 ? (
-                                          <div className="inline-flex items-center justify-end gap-2">
-                                            <span className="font-bold text-emerald-400">
-                                              {row.stats.taxaAprovacaoAvaliados}% aprov.
-                                            </span>
-                                            <span className="text-slate-500">·</span>
-                                            <span className="text-rose-400">
-                                              {row.stats.taxaReprovacaoAvaliados}% reprov.
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <span className="text-slate-500">Sem avaliados</span>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {empreendimentoRows.map((row) => {
+                                    const empKey = `${construtora.id}:${row.id}`;
+                                    const isConfirming = confirmDeleteEmpKey === empKey;
+                                    const isDeletingThis = deletingEmpKey === empKey;
+
+                                    return (
+                                      <tr
+                                        key={row.id}
+                                        className="hover:bg-slate-900/40 transition-colors"
+                                      >
+                                        <td className="py-3 px-4 font-semibold text-white">
+                                          {row.name}
+                                        </td>
+                                        <td className="py-3 px-3 text-slate-400 whitespace-nowrap">
+                                          <span className="inline-flex items-center gap-1">
+                                            <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
+                                            {row.city}
+                                            {row.uf ? `/${row.uf}` : ''}
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-3 text-right font-bold text-white">
+                                          {row.stats.total}
+                                        </td>
+                                        <td className="py-3 px-3 text-right">
+                                          <span className="font-semibold text-emerald-400">
+                                            {row.stats.aprovados}
+                                          </span>{' '}
+                                          <span className="text-slate-400">
+                                            ({row.stats.aprovadosPct}%)
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-3 text-right">
+                                          <span className="font-semibold text-rose-400">
+                                            {row.stats.reprovados}
+                                          </span>{' '}
+                                          <span className="text-slate-400">
+                                            ({row.stats.reprovadosPct}%)
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-3 text-right">
+                                          <span className="font-semibold text-amber-300">
+                                            {row.stats.remarcar}
+                                          </span>{' '}
+                                          <span className="text-slate-400">
+                                            ({row.stats.remarcarPct}%)
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-3 text-right">
+                                          <span className="font-semibold text-orange-300">
+                                            {row.stats.naoCompareceu}
+                                          </span>{' '}
+                                          <span className="text-slate-400">
+                                            ({row.stats.naoCompareceuPct}%)
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-3 text-right">
+                                          <span className="font-semibold text-slate-300">
+                                            {row.stats.pendentes}
+                                          </span>{' '}
+                                          <span className="text-slate-500">
+                                            ({row.stats.pendentesPct}%)
+                                          </span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                          {row.stats.totalAvaliados > 0 ? (
+                                            <div className="inline-flex items-center justify-end gap-2">
+                                              <span className="font-bold text-emerald-400">
+                                                {row.stats.taxaAprovacaoAvaliados}% aprov.
+                                              </span>
+                                              <span className="text-slate-500">·</span>
+                                              <span className="text-rose-400">
+                                                {row.stats.taxaReprovacaoAvaliados}% reprov.
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <span className="text-slate-500">Sem avaliados</span>
+                                          )}
+                                        </td>
+                                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                                          {row.isRegistered ? (
+                                            <div className="inline-flex items-center justify-end gap-1.5">
+                                              {isConfirming && !isDeletingThis && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setConfirmDeleteEmpKey(null)}
+                                                  className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold cursor-pointer"
+                                                >
+                                                  Cancelar
+                                                </button>
+                                              )}
+                                              <button
+                                                type="button"
+                                                disabled={Boolean(deletingEmpKey)}
+                                                onClick={() =>
+                                                  handleDeleteEmpreendimentoMaster(
+                                                    construtora,
+                                                    row.id
+                                                  )
+                                                }
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50 ${
+                                                  isConfirming
+                                                    ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                                                    : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30'
+                                                }`}
+                                              >
+                                                {isDeletingThis ? (
+                                                  <>
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    Excluindo...
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Trash2 className="w-3 h-3" />
+                                                    {isConfirming ? 'Confirmar' : 'Excluir'}
+                                                  </>
+                                                )}
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <span className="text-slate-600">—</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
                                 </tbody>
                               </table>
                             </div>

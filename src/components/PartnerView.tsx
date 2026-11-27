@@ -1594,7 +1594,7 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                   </h2>
                   <p className="text-xs text-slate-400">
                     {editingEmp
-                      ? 'Altere os dados do empreendimento ou exclua o cadastro'
+                      ? 'Altere os dados cadastrais do empreendimento'
                       : 'Cadastre um novo empreendimento na construtora'}
                   </p>
                 </div>
@@ -1684,39 +1684,14 @@ export const PartnerView: React.FC<PartnerViewProps> = ({
                 )}
 
                 <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
-                  {editingEmp ? (
-                    <button
-                      type="button"
-                      disabled={empSubmitting || empDeleting}
-                      onClick={handleDeleteEmp}
-                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 ${
-                        confirmEmpDelete
-                          ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30'
-                          : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30'
-                      }`}
-                    >
-                      {empDeleting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Excluindo...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="w-4 h-4" />
-                          {confirmEmpDelete ? 'Confirmar Exclusão' : 'Excluir Cadastro'}
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={empSubmitting || empDeleting}
-                      onClick={() => setIsEmpModalOpen(false)}
-                      className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium cursor-pointer"
-                    >
-                      Cancelar
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={empSubmitting || empDeleting}
+                    onClick={() => setIsEmpModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
 
                   <button
                     type="submit"
